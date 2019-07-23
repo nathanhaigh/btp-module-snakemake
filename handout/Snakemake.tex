@@ -5,14 +5,13 @@
 %    (a double-backslash: \\) at the end of each person.
 %  * If you don't want this information shown on the module chapter page, simply remove the lines
 %    within the \setModuleAuthors{} and \setModuleContributions{} environments
-\setModuleTitle{Data Quality}
+\setModuleTitle{Introduction to Snakemake}
 \setModuleAuthors{%
-  Jane Bloggs \mailto{jane.bloggs@example.com} \\
-  Joe Bloggs \mailto(joe.bloggs@example.com)
+  Nathan S. Watson-Haigh \mailto{nathan.watson-haigh@adelaide.edu.au}
 }
-\setModuleContributions{%
-  John Doe \mailto{john.dow@example.com}%
-}
+%\setModuleContributions{%
+%  John Doe \mailto{john.dow@example.com}%
+%}
 
 % BEGIN: Module Title Page
 % This simply uses the above information and creates a module chapter page
@@ -37,40 +36,96 @@
 
 After completing this module the trainee should be able to:
 \begin{itemize}
-  \item Assess the overall quality of NGS sequence reads
-  \item Visualise the quality, and other associated matrices, of reads to decide
-        on filters and cutoffs for cleaning up data ready for downstream analysis
-  \item Clean up and pre-process the sequences data for further analysis
+  \item Install Snakemake in a conda environment
+  \item Execute a Snakemake workflow
+  \item Use the provided "profile" to execute jobs on a compute cluster
+  \item Write simple Snakemake rules capable of generating some output(s) by executing some code which perates on some input(s)
 \end{itemize}
 % END KLOs
 
 % BEGIN: Resources Used
 % This section can be used to describe the tools and data used during the module. It helps to act as
 % a future reference to the trainee
-\section{Resources You'll be Using}
- 
+\section{Resources Required}
+
+For the purpose of this training you need access to:
+
+\begin{itemize}
+  \item A compute cluster with the \texttt{module} command available to you for loading software
+  \item \url{https://sylabs.io/singularity/}{Singularity} - available as a module on the above cluster
+  \item \url{https://www.anaconda.com/distribution/}{conda} - available as a module on the above cluster
+\end{itemize}
+
+
 \subsection{Tools Used}
 \begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
-  \item[FastQC]\hfill\\
-  	\url{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/}
-  \item[FASTX-Toolkit]\hfill\\
-  	\url{http://hannonlab.cshl.edu/fastx_toolkit/}
-  \item[Picard]\hfill\\
-  	\url{http://picard.sourceforge.net/}
+  \item[Snakemake]\hfill\\
+  	\url{https://snakemake.readthedocs.io}
 \end{description}
 
 \section{Useful Links}
  
 \begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
-  \item[FASTQ Encoding]\hfill\\
-    \url{http://en.wikipedia.org/wiki/FASTQ_format#Encoding}
+  \item[Slurm Documentation]\hfill\\
+    \url{https://slurm.schedmd.com/documentation.html}
 \end{description}
 
 \newpage
 % END: Resources Used
 
 % BEGIN: Introduction
-\section{Introduction}
+\section{Setting Up Your Environment}
+
+For the purpose of the workshop we will be working on the head node of an HPC cluster running \url{https://slurm.schedmd.com/documentation.html}{Slurm}.
+This is the most likely infrastructure that fellow bioinformaticians already find themselves using
+on a regular basis. We also assume that the cluster provides the \texttt{module} command for you to
+load software and the modules \texttt{Anaconda3} and \texttt{Singularity} are available to use.
+
+The execution of the Snakemake workflow will actually take place on the cluster head node with jobs
+being submitted to Slurm for queing and processing. From the head node, Snakemake will monitor the
+submitted jobs for their completion status and submit new jobs as dependent jobs complete sucessfully.
+
+\subsection{Connect to the Cluster Head Node}
+
+\begin{steps}
+First up, lets connect to the head node of the HPC cluster using \texttt{ssh}.
+
+\emph{See your local facilitator for connection details. You should have one user account per person.}
+\end{steps}
+
+\subsection{Install Snakemake}
+
+The recommended installation route for Snakemake is through a conda environemnt
+(\url{https://snakemake.readthedocs.io/en/stable/getting_started/installation.html}). As such, you need
+Anaconda3, usually avaiable to you on your cluster via the module system.
+
+\begin{steps}
+\begin{lstlisting}
+# Load the Anaconda3 module on your cluster
+# If it's unavailable contact the cluster sysadmin
+module load \
+  Anaconda3
+
+# Create a new conda environment for snakemake
+# https://anaconda.org/search?q=snakemake
+SNAKEMAKE_VERSION="5.4.0"
+
+conda create \
+  --name snakemake \
+  --channel bioconda --channel conda-forge \
+  --yes \
+  snakemake="${SNAKEMAKE_VERSION}"
+\end{lstlisting}
+
+That's all there is to installing Snakemake.
+\end{steps}
+
+
+
+
+
+
+
 
 % To make a paragraph appear as a "note" to the reader, simply wrap it in a "note" environment like
 % this:
