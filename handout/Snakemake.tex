@@ -107,6 +107,7 @@ module load \
   Anaconda3
 
 # Create a new conda environment for snakemake
+# We use a specific version for reproducibility reasons
 # https://anaconda.org/search?q=snakemake
 SNAKEMAKE_VERSION="5.5.4"
 
@@ -118,9 +119,27 @@ conda create \
 \end{lstlisting}
 
 That's all there is to installing Snakemake.
+
+To activate the environment and make \texttt{snakemake} available on the command line simply:
+
+\begin{lstlisting}
+# activate the conda environment you created above
+source activate snakemake
+\end{lstlisting
 \end{steps}
 
 
+\begin{bonus}
+While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake}
+within this conda environment if there is a new version available.
+
+\begin{answer}
+\begin{lstlisting}
+conda update --channel bioconda --channel conda-forge snakemake
+\end{lstlisting}
+\end{answer}
+
+\end{bonus}
 
 
 
