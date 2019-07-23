@@ -60,7 +60,9 @@ For the purpose of this training you need access to:
 \subsection{Tools Used}
 \begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
   \item[Snakemake]\hfill\\
-  	\url{https://snakemake.readthedocs.io}
+    \url{https://snakemake.readthedocs.io}
+  \item[Graphviz]\hfill\\
+    \url{https://www.graphviz.org}
 \end{description}
 
 \section{Useful Links}
@@ -142,6 +144,62 @@ conda update \
 \end{answer}
 
 \end{bonus}
+
+
+\subsection{Running a Workflow}
+
+We are going to work with an example Snakemake workflow to demonstrate how they are run before
+we get stuck into writing our own. This example workflow consists of the following steps:
+
+\begin{itemize}
+  \item Running FastQC across the raw reads
+  \item Aggregating the raw read FastQC reports using MultiQC
+  \item Performing adapter, quality, and read length filtering using Trimmomatic
+  \item Running FastQC across the QC'd reads
+  \item Aggregating the QC read FastQC reports using MultiQC
+  \item Index the reference FASTA file
+  \item Perform a \texttt{bwa-mem} read alignment
+\end{itemize}
+
+\begin{steps}
+
+Lets get the example workflow:
+
+\begin{lstlisting}
+# Clone the repository
+git clone https://github.com/UofABioinformaticsHub/2019_EMBL-ABR_Snakemake_webinar ./example_workflow
+
+cd example_workflow/snakemake-tutorial
+\end{lstlisting}
+
+The most basic of Snakemake commands will execute the workflow, running jobs on the head node (your cluster
+sysadmin will probably growl at you). Lets be nice, and just do a \texttt{dryrun} for now:
+
+\begin{lstlisting}
+snakemake \
+  --dryrun
+\end{lstlisting}
+\end{steps}
+
+\begin{questions}
+
+Using the Snakemake help, how do you get Snakemake to print the shell commands it will execute for each job?
+
+\begin{answer}
+\begin{lstlisting}
+snakemake \
+  --dryrun \
+  --printshellcmds
+\end{lstlisting}
+\end{questions}
+
+
+
+
+
+
+
+
 
 
 
