@@ -38,7 +38,7 @@ After completing this module the trainee should be able to:
 \begin{itemize}
   \item Install Snakemake in a conda environment
   \item Execute a Snakemake workflow
-  \item Use the provided "profile" to execute jobs on a compute cluster
+  \item Use the provided ``profile'' to execute jobs on a compute cluster
   \item Write simple Snakemake rules capable of generating some output(s) by executing some code which perates on some input(s)
 \end{itemize}
 % END KLOs
@@ -52,8 +52,8 @@ For the purpose of this training you need access to:
 
 \begin{itemize}
   \item A compute cluster with the \texttt{module} command available to you for loading software
-  \item \url{https://sylabs.io/singularity/}{Singularity} - available as a module on the above cluster
-  \item \url{https://www.anaconda.com/distribution/}{conda} - available as a module on the above cluster
+  \item Singularity (\url{https://sylabs.io/singularity/}) - available as a module on the above cluster
+  \item Conda(\url{https://www.anaconda.com/distribution/}) - available as a module on the above cluster
 \end{itemize}
 
 
@@ -75,10 +75,11 @@ For the purpose of this training you need access to:
 \newpage
 % END: Resources Used
 
-% BEGIN: Introduction
+%========================
 \section{Setting Up Your Environment}
+%========================
 
-For the purpose of the workshop we will be working on the head node of an HPC cluster running \url{https://slurm.schedmd.com/documentation.html}{Slurm}.
+For the purpose of the workshop we will be working on the head node of an HPC cluster running slurm (\url{https://slurm.schedmd.com/documentation.html}).
 This is the most likely infrastructure that fellow bioinformaticians already find themselves using
 on a regular basis. We also assume that the cluster provides the \texttt{module} command for you to
 load software and the modules \texttt{Anaconda3} and \texttt{Singularity} are available to use.
@@ -87,7 +88,9 @@ The execution of the Snakemake workflow will actually take place on the cluster 
 being submitted to Slurm for queing and processing. From the head node, Snakemake will monitor the
 submitted jobs for their completion status and submit new jobs as dependent jobs complete sucessfully.
 
+%------------------------
 \subsection{Connect to the Cluster Head Node}
+%------------------------
 
 \begin{steps}
 First up, lets connect to the head node of the HPC cluster using \texttt{ssh}.
@@ -95,7 +98,9 @@ First up, lets connect to the head node of the HPC cluster using \texttt{ssh}.
 \emph{See your local facilitator for connection details. You should have one user account per person.}
 \end{steps}
 
+%------------------------
 \subsection{Install Snakemake}
+%------------------------
 
 The recommended installation route for Snakemake is through a conda environemnt
 (\url{https://snakemake.readthedocs.io/en/stable/getting_started/installation.html}). As such, you need
@@ -103,33 +108,86 @@ Anaconda3, usually avaiable to you on your cluster via the module system.
 
 \begin{steps}
 \begin{lstlisting}
-# Load the Anaconda3 module on your cluster
-# If it's unavailable contact the cluster sysadmin
-module load \
-  Anaconda3
-
-# Create a new conda environment for snakemake
 # We use a specific version for reproducibility reasons
-# https://anaconda.org/search?q=snakemake
+# Find the latest version: https://anaconda.org/search?q=snakemake
 SNAKEMAKE_VERSION="5.5.4"
 
-conda create \
+# Load miniconda
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
+
+#####
+# One-time commands to integrate conda into bash
+#####
+conda init bash
+. ~/.bashrc
+#####
+
+# Install snakemake by submitting a job to slurm - conda is a resource hog so your HPC sysadmins
+# will like you for doing this
+# This might take 10-20mins
+sbatch --job-name 'snakemake-install' --mem 4G --time 30:00 --wrap \
+ "conda create \
   --name snakemake \
   --channel bioconda --channel conda-forge \
   --yes \
-  snakemake="${SNAKEMAKE_VERSION}"
+  snakemake=${SNAKEMAKE_VERSION}"
 \end{lstlisting}
 
-That's all there is to installing Snakemake.
+The above \texttt{conda create} command, submitted to slurm, will take 10-20mins to complete. 
 
-To activate the environment and make \texttt{snakemake} available on the command line simply:
-
-\begin{lstlisting}
-# activate the conda environment you created above
-source activate snakemake
-\end{lstlisting}
 \end{steps}
 
+\begin{note}
+
+You can monitor your own job(s) in the slurm queue using the slurm command `squeue`:
+
+\begin{lstlisting}
+squeue --user ${USER}
+\end{lstlisting}
+
+For convienience you are also provided with the `sq` function which produces nicer output and by default only shows your own jobs:
+
+\begin{lstlisting}
+sq
+
+# Someone elses jobs
+sq --user ${SOMEONE_ELSE}
+\end{lstlisting}
+
+If you want to see all jobs in the queue:
+
+\begin{lstlisting}
+squeue
+\end{lstlisting}
+
+\end{note}
+
+Once your job completes successfully, snakemake installation is complete. All that is left to do is to
+activate the environment which will make \texttt{snakemake} available on the command line:
+
+\begin{steps}
+
+\begin{lstlisting}
+# Activate the newly created conda environment
+conda activate snakemake
+\end{lstlisting}
+
+Integrate Snakemake autocompletion into bash:
+
+\begin{lstlisting}
+complete -o bashdefault -C snakemake-bash-completion snakemake
+\end{lstlisting}
+
+Test if Snakemake is actually working:
+
+\begin{lstlisting}
+snakemake --version
+\end{lstlisting}
+
+\end{steps}
+
+If you experience problems with the installation, head to the Troubleshooting section for help.
 
 \begin{bonus}
 While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake}
@@ -146,7 +204,251 @@ conda update \
 \end{bonus}
 
 
-\subsection{Running a Workflow}
+%------------------------
+\subsection{Hello (Snakemake) world}
+%------------------------
+
+Lets get going with running a really simple ``Hello, world!'' example workflow. The workflow creates multiple ``world.txt'' files each in a
+different subdirectory and each with different content.
+
+\begin{steps}
+
+\begin{lstlisting}
+mkdir -p /shared/${USER}
+cd /shared/${USER}
+git clone https://github.com/nathanhaigh/snakemake-hello-world
+cd snakemake-hello-world
+
+# Run the workflow for real
+snakemake
+
+# Lets look at the file contents
+cat */world.txt
+\end{lstlisting}
+
+\end{steps}
+
+%========================
+\section{Snakemake basics}
+%========================
+
+The way Snakemake runs can be thought of as being somewhat like a satellite navigation system, you request a destination
+(``target'') and the system works out a route to get you there using its knowledge of the roads (``dependancies'') which
+link together towns (``files'').
+
+%------------------------
+\subsection{Rule Definition}
+%------------------------
+
+By convention, we use a file called \texttt{Snakefile} to define our workflow rules. ``Rules'' define how to
+create output files from input files. For example:
+
+\begin{lstlisting}
+rule alsen_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/Alsen_R1.fastq.gz",
+		r2  = "raw_reads/Alsen_R2.fastq.gz",
+	output:
+		"mapped/Alsen.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+\end{lstlisting}
+
+The shell commands (line 10-11) operate on the input files (defined in lines 2-5) to create the output file (defined in lines 6-7). Input and output
+file names can be referenced using the curly brace syntax shown within the \texttt{shell} definition.
+
+%------------------------
+\subsection{Targets}
+%------------------------
+
+Targets are the files we can ask the Snakemake workflow to create. In the previous example, the rule defines an explicit
+output file which can be used as a ``target'' when executing the workflow:
+
+\begin{lstlisting}
+snakemake \
+  mapped/my.bam
+\end{lstlisting}
+
+Snakemake will process all the dependencies defined by the rules to create a Directed Acyclic Graph (DAG) of the job dependencies and determine which
+rules need to be executed in order to create the requested \texttt{target}. If no \texttt{target} is specified, Snakemake will simply execute the first
+rule in the \texttt{Snakefile}. In addition, the first rule in the \texttt{Snakefile} is also given an alias of \texttt{all}. Thus the following commands
+are equivillent to the one show above:
+
+\begin{lstlisting}
+snakemake
+snakemake all
+\end{lstlisting}
+
+Rules which only define \texttt{input} fiels are called pseudo-rules. These provide a convienient way to define a set of \texttt{target} files by simply
+referencing the rule name as the target. For instance the following \texttt{Snakefile} defines two rules for creating two different BAM files from
+different inputs:
+
+\begin{lstlisting}
+rule mapping:
+	input:
+		"mapped/Alsen.bam",
+		"mapped/Baxter.bam",
+
+rule alsen_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/Alsen_R1.fastq.gz",
+		r2  = "raw_reads/Alsen_R2.fastq.gz",
+	output:
+		"mapped/Alsen.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+
+rule baxter_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/Baxter_R1.fastq.gz",
+		r2  = "raw_reads/Baxter_R2.fastq.gz",
+	output:
+		"mapped/Baxter.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+\end{lstlisting}
+
+The pseudo-rule (\texttt{mapping}) can be used as a \texttt{target} when executing the workflow:
+
+\begin{lstlisting}
+snakemake mapping
+\end{lstlisting}
+
+Remember that the first rule defined in the \texttt{Snakefile} is also given the alias \texttt{all}, so the following is equivilent:
+
+\begin{lstlisting}
+snakemake all
+\end{lstlisting}
+
+Because both the \texttt{mapping} and \texttt{all} targets refer to the same files, to avoid confusion it is convention to all the
+first rule \texttt{all}, thus the above \texttt{Snakefile} would more accuratly be written as:
+
+\begin{lstlisting}
+rule all:
+	input:
+		"mapped/Alsen.bam",
+		"mapped/Baxter.bam",
+
+rule alsen_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/Alsen_R1.fastq.gz",
+		r2  = "raw_reads/Alsen_R2.fastq.gz",
+	output:
+		"mapped/Alsen.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+
+rule baxter_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/Baxter_R1.fastq.gz",
+		r2  = "raw_reads/Baxter_R2.fastq.gz",
+	output:
+		"mapped/Baxter.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+\end{lstlisting}
+
+
+%------------------------
+\subsection{Wildcards}
+%------------------------
+
+The above example \texttt{Snakefile} contains two almost identical rules with the only difference being that the first rule is for input/output
+files containing \texttt{Alsen} in theor paths, while the second rule is for input/output files containing \texttt{Baxter} in theor paths. This
+seems like an awful lot of redundant code for executing the same commands but on different files. Snakemake provides ``wildcards'' which are
+specified using curly braces in the \texttt{output} file paths and then reused within the \texttt{input} file paths and other parts of a rule
+definition.
+
+Therefore, the two mapping rules defined in the above \texttt{Snakefile} can be generalised with the use of a \texttt{wildcard}, which we
+call \texttt{accession}, as follows:
+
+\begin{lstlisting}
+rule all:
+	input:
+		"mapped/Alsen.bam",
+		"mapped/Baxter.bam",
+
+rule generalised_mapping:
+	input:
+		ref = "references/reference.fasta.gz",
+		r1  = "raw_reads/{accession}_R1.fastq.gz",
+		r2  = "raw_reads/{accession}_R2.fastq.gz",
+	output:
+		"mapped/{accession}.bam",
+	shell:
+		"""
+		bwa mem {input.ref} {input.r1} {input.r2} \
+		  | samtools view -b > {output}
+		"""
+\end{lstlisting}
+
+This generalisation, now also means we can potentially specify an infinate number of \texttt{targets} on the commandline:
+
+\begin{lstlisting}
+snakemake \
+  Gladius.bam \
+  something_obscure.bam \
+  get_more_crazy.bam
+\end{lstlisting}
+
+
+
+
+
+
+\begin{bonus}
+
+If you're storming ahead of everyone else, why not take a look at these bonus questions/tasks:
+
+\begin{questions}
+Look at the \texttt{snakemake} help, what commandline argument would you use for snakemake to show the reason for
+a rule being executed?
+\end{questions}
+
+\begin{answer}
+\begin{lstlisting}
+snakemake --reason
+\end{lstlisting}
+\end{answer}
+
+\begin{questions}
+Without modifying the \texttt{Snakefile}, how might you create new Hello, world files using a different \texttt{cheer} such as
+\texttt{cześć} which is Polish for ``hello''?
+\end{questions}
+
+\begin{answer}
+\begin{lstlisting}
+snakemake --reason \
+  czesc/world.txt
+\end{lstlisting}
+\end{answer}
+
+\end{bonus}
+
+
+%========================
+\section{Example Workflow}
+%========================
 
 We are going to work with an example Snakemake workflow to demonstrate how they are run before
 we get stuck into writing our own. This example workflow consists of the following steps:
@@ -195,135 +497,44 @@ snakemake \
 
 \end{questions}
 
+%========================
+\section{Modify/extend the Workflow}
+%========================
 
+%========================
+\section{Your own Workflow}
+%========================
 
+%========================
+\section{Troubleshooting}
+%========================
 
+\subsection{Snakemake Install}
 
+If you have a broken or incomplete snakemake installation, try the following steps to fix things:
 
-
-
-
-
-
-
-
-
-% To make a paragraph appear as a "note" to the reader, simply wrap it in a "note" environment like
-% this:
-\begin{note}
-This is an important note to the reader. The paragraph get's it own margin icon and formatting to
-ensure it stands out.
-\end{note}
-
-There are 10 characters which have special meaning in \LaTeX and to have them displayed as literal
-characters we need to do something special. The first seven can simply be prepended by a backslash;
-for the other three, we must use the macros \verb+\textasciitilde+, \verb+\textasciicircum+,
-\verb+\textbackslash+.
-
-
-\& \% \$ \# \_ \{ \}
-
-\textasciitilde
-
-\textasciicircum
-
-\textbackslash
-
-Highly redundant coverage ($>$15X) of the genome can be used to correct sequencing
-errors in the reads before assembly and errors. Various k-mer based error
-correction methods exist but are beyond the scope of this tutorial.
-
-In order to use a single character to encode Phred qualities, ASCII characters
-are used (\url{http://shop.alterlinks.com/ascii-table/ascii-table-us.php}). All ASCII characters have a decimal
-number associated with them but the first 32 characters are non-printable (e.g.
-
-Because ASCII characters $<$ 33 are non-printable, using the Phred+33 encoding was
-not possible. Therefore, they simply moved the offset from 33 to 64 thus
-
-schema it is not always possible to identify what encoding is in use. For
-example, if the only characters seen in the quality string are (\texttt{@ABCDEFGHI}),
-then it is impossible to know if you have really good Phred+33 encoded qualities
-or really bad Phred+64 encoded qualities.
-
-\subsection{Tables}
-
-Writing tables in \LaTeX is HARD! Rather than write them from scratch, I'd head over to
-\url{http://www.tablesgenerator.com/latex_tables}, generate the table you want using the interactive
-page and copy the resulting \LaTeX into your source file.
-
-\begin{tabular}{llr}
-\hline
-\multicolumn{2}{c}{Item} \\
-\cline{1-2}
-Animal    & Description & Price (\$) \\
-\hline
-Gnat      & per gram    & 13.65      \\
-          & each        & 0.01       \\
-Gnu       & stuffed     & 92.50      \\
-Emu       & stuffed     & 33.33      \\
-Armadillo & frozen      & 8.99       \\
-\hline
-\end{tabular}
-
-\subsection{Figures}
-
-No handout is complete without figures, screenshots or similar.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{handout/bad_example.png}
-\caption{Per base sequence quality plot for \texttt{bad\_example.fastq}.}
-\label{fig:bad_example_untrimmed_plot}
-\end{figure}
-
-\subsection{Maths Environment}
-
-I won't pretend to be an expert in \LaTeX but I do know that one of the strengths of \LaTeX is it's
-ability to allow mathematical formulas to be constructed and typeset very easily. Firstly, you have
-to tell \LaTeX what text is going to contain mathematical symbols.
-
-For inline display, simply surround the relevant text by dollar signs: \verb+$Q(A) =-10 log10(P(\sim A))$+
-
-For more complex mathematical formulas which need to be displayed separately, use the
-\verb+\begin{displaymath} ... \end{displaymath}+ environment to wrap around your formulas.
-
-\begin{displaymath}
-Q(A) =-10 log10(P(\sim A))
-\end{displaymath} 
-
-
-\subsection{Questions and Answers}
-
-It is useful to maintain the answers to questions together in the same \LaTeX source. By using the
-\verb+\begin{answer} ... \end{answer}+ environment we can have the enclosed answers excluded from
-the trainee's version of the handout while including it in the trainer's version of the handout.
-
-\begin{questions}
-We can ask a simply question to test if the trainee is understanding what they are doing. 
-\begin{answer}
-We can maintain the answer along side the questions.
-\end{answer}
-
-\end{questions}
-
-\subsection{Code For Trainees to Copy/Type}
-
-Different people have different opinions on whether it is a good idea to provide the commands for
-trainees to copy-and-paste. In our experience, there is a huge amount of time wasted by novices
-typing commands incorrectly or changing filenames which affects commands you might run later on. We
-also think that it's a good idea to pose regular questions or ask the trainees to modify a previous
-command. This way you can catch out those whoe are just trying to get ahead by blindly
-copying-and-pasting.
-
-To provide a nicely formatted, copy-and-pastable command, simply wrap it in the
-\verb+\begin{lstlisting} ... \end{lstlisting}+ environment. Long commands will be wrapped
-automatically and bash line continuation characters (\textbackslash) inserted where required.
-
-\begin{steps}
 \begin{lstlisting}
-cd ~/QC
-fastx_clipper -h
-fastx_clipper -v -Q 33 -l 20 -M 15 -a GATCGGAAGAGCGGTTCAGCAGGAATGCCGAG -i bad_example.fastq -o bad_example_clipped.fastq
-\end{lstlisting}
-\end{steps}
+# deactivate the snakemake conda environment if it is already active
+conda deactivate
 
+# Delete the snakemake conda environment
+conda env remove --name snakemake
+\end{lstlisting}
+
+Now try reinstalling snakemake.
+
+\subsection{Conda Software Environment Setup}
+
+If your job failed or timed out, you will need to re-run conda software environment setup job again. However, you may first need to release the
+Snakemake lock which protects you from running multiple instances of the same workflow at the same time:
+
+\begin{lstlisting}
+snakemake \
+\end{lstlisting}
+```
+
+To ensure Snakemake starts with a clean slate, delete the ``hidden'' \texttt{.snakemake} directory:
+
+\begin{lstlisting}
+rm -rf .snakemake
+\end{lstlisting}
