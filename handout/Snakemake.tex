@@ -123,8 +123,8 @@ conda init bash
 . ~/.bashrc
 #####
 
-# Install snakemake by submitting a job to slurm - conda is a resource hog so your HPC sysadmins
-# will like you for doing this
+# Install snakemake by submitting a job to slurm - conda is a resource
+# hog so your HPC sysadmins will like you for doing this
 # This might take 10-20mins
 sbatch --job-name 'snakemake-install' --mem 4G --time 30:00 --wrap \
  "conda create \
@@ -140,25 +140,24 @@ The above \texttt{conda create} command, submitted to slurm, will take 10-20mins
 
 \begin{note}
 
-You can monitor your own job(s) in the slurm queue using the slurm command `squeue`:
+You can monitor all jobs in the slurm squeue, or just your own job(s) using the slurm command \texttt{squeue}:
 
 \begin{lstlisting}
+# All jobs in the queue
+squeue
+
+# Just your own jobs
 squeue --user ${USER}
 \end{lstlisting}
 
-For convienience you are also provided with the `sq` function which produces nicer output and by default only shows your own jobs:
+For convienience we have provided you with the \texttt{sq} function which produces nicer output than the default \texttt{squeue} and only shows your own jobs:
 
 \begin{lstlisting}
+# Your own jobs
 sq
 
 # Someone elses jobs
 sq --user ${SOMEONE_ELSE}
-\end{lstlisting}
-
-If you want to see all jobs in the queue:
-
-\begin{lstlisting}
-squeue
 \end{lstlisting}
 
 \end{note}
@@ -204,30 +203,6 @@ conda update \
 \end{bonus}
 
 
-%------------------------
-\subsection{Hello (Snakemake) world}
-%------------------------
-
-Lets get going with running a really simple ``Hello, world!'' example workflow. The workflow creates multiple ``world.txt'' files each in a
-different subdirectory and each with different content.
-
-\begin{steps}
-
-\begin{lstlisting}
-mkdir -p /shared/${USER}
-cd /shared/${USER}
-git clone https://github.com/nathanhaigh/snakemake-hello-world
-cd snakemake-hello-world
-
-# Run the workflow for real
-snakemake
-
-# Lets look at the file contents
-cat */world.txt
-\end{lstlisting}
-
-\end{steps}
-
 %========================
 \section{Snakemake basics}
 %========================
@@ -236,214 +211,363 @@ The way Snakemake runs can be thought of as being somewhat like a satellite navi
 (``target'') and the system works out a route to get you there using its knowledge of the roads (``dependancies'') which
 link together towns (``files'').
 
+To exemplify the basics of Snakemake, we're going to take a look at constructing a ``Hello, world!'' example. We will go
+through the process of explicitly defining ``rules'', the basic building blocks of a Snakemake workflow. Rules are used to
+define how to create output (``target'') files, possibly requiring some \texttt{input} files. We will then work to
+generalise these rule, introducing other Snakemake concepts and features along the way.
+
 %------------------------
 \subsection{Rule Definition}
 %------------------------
 
-By convention, we use a file called \texttt{Snakefile} to define our workflow rules. ``Rules'' define how to
-create output files from input files. For example:
+By convention, we use a file called \texttt{Snakefile} in which to define our workflow rules. ``Rules'' define how to
+create output (target) files. For example:
 
 \begin{lstlisting}
-rule alsen_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/Alsen_R1.fastq.gz",
-		r2  = "raw_reads/Alsen_R2.fastq.gz",
+rule hello_world:
 	output:
-		"mapped/Alsen.bam",
+		"Hello/World.txt",
 	shell:
 		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
+		echo "Hello, World!" > Hello/World.txt
 		"""
 \end{lstlisting}
 
-The shell commands (line 10-11) operate on the input files (defined in lines 2-5) to create the output file (defined in lines 6-7). Input and output
-file names can be referenced using the curly brace syntax shown within the \texttt{shell} definition.
+This rule has the name \texttt{hello\_world} (line 1). The \texttt{output} file (line 3) is created by a \texttt{shell} script (line 6) which is
+simply echoing a string, \texttt{Hello, world!}, and redirecting that into the appropriately named output file.
 
-%------------------------
-\subsection{Targets}
-%------------------------
+\begin{steps}
 
-Targets are the files we can ask the Snakemake workflow to create. In the previous example, the rule defines an explicit
-output file which can be used as a ``target'' when executing the workflow:
+Create a working directory under \texttt{/shared/\${USER}}, and add the above \texttt{hello\_world} rule to a file called \texttt{Snakefile}:
 
 \begin{lstlisting}
-snakemake \
-  mapped/my.bam
+# Create a working directory and move into it
+mkdir -p /shared/${USER}/my_hello_world
+cd /shared/${USER}/my_hello_world
+
+# Create the Snakefile with the relevant contents using this heredoc
+cat >Snakefile <<EOF
+rule hello_world:
+  output:
+    "Hello/World.txt",
+  shell:
+    """
+    echo "Hello, World!" > Hello/World.txt
+    """
+EOF
 \end{lstlisting}
 
-Snakemake will process all the dependencies defined by the rules to create a Directed Acyclic Graph (DAG) of the job dependencies and determine which
-rules need to be executed in order to create the requested \texttt{target}. If no \texttt{target} is specified, Snakemake will simply execute the first
-rule in the \texttt{Snakefile}. In addition, the first rule in the \texttt{Snakefile} is also given an alias of \texttt{all}. Thus the following commands
-are equivillent to the one show above:
+\end{steps}
+
+\begin{note}
+
+Things to be careful of:
+
+\begin{itemize}
+  \item Correct capitalisation of the filename \texttt{Snakefile} - this saves you from having to do something like \texttt{snakemake --snakefile my\_oddly\_named\_Snakefile}
+  \item Consistent indentation (tabs or spaces but not both) of the Snakemake directives at the first indentation level. This is because a Snakemake syntax is
+        an extension of Python which has this constraint.
+\end{itemize}
+
+\end{note}
+
+\begin{steps}
+
+Now execute the workflow
 
 \begin{lstlisting}
 snakemake
-snakemake all
 \end{lstlisting}
 
-Rules which only define \texttt{input} fiels are called pseudo-rules. These provide a convienient way to define a set of \texttt{target} files by simply
-referencing the rule name as the target. For instance the following \texttt{Snakefile} defines two rules for creating two different BAM files from
-different inputs:
+Try executing it for a second time:
 
 \begin{lstlisting}
-rule mapping:
-	input:
-		"mapped/Alsen.bam",
-		"mapped/Baxter.bam",
-
-rule alsen_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/Alsen_R1.fastq.gz",
-		r2  = "raw_reads/Alsen_R2.fastq.gz",
-	output:
-		"mapped/Alsen.bam",
-	shell:
-		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
-		"""
-
-rule baxter_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/Baxter_R1.fastq.gz",
-		r2  = "raw_reads/Baxter_R2.fastq.gz",
-	output:
-		"mapped/Baxter.bam",
-	shell:
-		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
-		"""
+snakemake
 \end{lstlisting}
 
-The pseudo-rule (\texttt{mapping}) can be used as a \texttt{target} when executing the workflow:
+\end{steps}
+
+\begin{note}
+
+A few interesting thing to note at this point is that Snakemake will:
+
+\begin{itemize}
+  \item Use the \texttt{Snakefile} as it's input unless you use \texttt{--snakefile my\_snakefile}
+  \item Execute the first rule encountered in the \texttt{Snakefile}
+  \item Create the required output directory structure, in this case creating the \texttt{Hello/} directory
+  \item Will not execute rules for which the \texttt{target} output file already exists unless \texttt{--force}, \texttt{--forceall} or \texttt{--forcerun} is used.
+\end{itemize}
+
+\end{note}
+
+\begin{steps}
+
+\texttt{Snakemake} executes the first rule in the \texttt{Snakefile} unless we explicityly ask for a ``target''. This means the following are equivilent:
 
 \begin{lstlisting}
-snakemake mapping
+# Not specifying a target will result in Snakemake executing the
+# first rule in the Snakefile ("hello_world" in this case)
+snakemake
+
+# Explicitly requesting the "hello_world" rule to be run:
+snakemake hello_world
+
+# Explicityly request the target filename to be created:
+snakemake Hello/World.txt
 \end{lstlisting}
 
-Remember that the first rule defined in the \texttt{Snakefile} is also given the alias \texttt{all}, so the following is equivilent:
+\subsection{Generalising Rules}
+
+The above \texttt{hello\_world} rule contains some redundancy, namely the output filename (\texttt{Hello/World.txt}) is specified in two places. This would mean we would
+have to make modifications in two places if we wanted to change the name of the output file. Snakemake allows us to refer to the values of other elements of the rule
+using a curley brace syntax within the \texttt{shell} directive.
+
+So, rewrite the rule as follows:
 
 \begin{lstlisting}
-snakemake all
+rule hello_world:
+	output:
+		"Hello/World.txt",
+	shell:
+		"""
+		echo "Hello, World!" > {output}
+		"""
 \end{lstlisting}
 
-Because both the \texttt{mapping} and \texttt{all} targets refer to the same files, to avoid confusion it is convention to all the
-first rule \texttt{all}, thus the above \texttt{Snakefile} would more accuratly be written as:
+\texttt{\{output\}} used within the \texttt{shell} directive will be substituted for the filename defined in the \texttt{output} directive. Before
+running the workflow again, we will first request Snakemake to delete all the output files associated with a target. The target could be either implied
+or explicitly provided. The following are equivilent:
 
 \begin{lstlisting}
-rule all:
-	input:
-		"mapped/Alsen.bam",
-		"mapped/Baxter.bam",
+# Delete output files of the implied target (the first rule in the Snakefile)
+snakemake --delete-all-output
 
-rule alsen_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/Alsen_R1.fastq.gz",
-		r2  = "raw_reads/Alsen_R2.fastq.gz",
+# Delete output files of the explicitly defined "hello_world" rule:
+snakemake --delete-all-output hello_world
+
+# Delete output files of the explicityly requested target filename:
+snakemake --delete-all-output Hello/World.txt
+\end{lstlisting}
+
+\end{steps}
+
+What if we wanted to write a ``Hello, world!'' rule capable of saing ``Hello'' in different lannguages? We could include a new rule:
+
+\begin{lstlisting}
+rule hello_world:
 	output:
-		"mapped/Alsen.bam",
+		"Hello/World.txt",
 	shell:
 		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
+		echo "Hello, World!" > {output}
 		"""
 
-rule baxter_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/Baxter_R1.fastq.gz",
-		r2  = "raw_reads/Baxter_R2.fastq.gz",
+rule hello_world_spannish:
 	output:
-		"mapped/Baxter.bam",
+		"Hola/World.txt",
 	shell:
 		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
+		echo "Hola, World!" > {output}
 		"""
 \end{lstlisting}
+
+This isn't good as we have introduced a whole lot of redundancy by mostly doing a copy and paste and then changing a couple of words! There is a better way.
+
+Snakemake uses named ``wildcards'' to capture strings defined in the \texttt{output} filenames and refer back to them elsewhere within a rule. See here:
+
+\begin{lstlisting}
+rule hello_world:
+	output:
+		"{cheer}/World.txt",
+	shell:
+		"""
+		echo "{wildcards.cheer}, World!" > {output}
+		"""
+\end{lstlisting}
+
+We define a named wildcard called \texttt{cheer}, using curley brace syntax within the filename of the \texttt{output} directive. We can then reuse
+the value of this wildcard within the \texttt{shell} directive via \texttt{\{wildcards.cheer\}}.
+
+\begin{steps}
+
+Modify your \texttt{Snakefile} to contain the above rule and try executing the workflow using each of the following:
+
+\begin{lstlisting}
+# Not specifying a target will result in Snakemake executing the
+# first rule in the Snakefile ("hello_world" in this case)
+snakemake
+
+# Explicitly requesting the "hello_world" rule to be run:
+snakemake hello_world
+\end{lstlisting}
+
+\begin{questions}
+
+Why did these two commands not work this time around?
+
+\begin{answer}
+
+Essentially, \texttt{cheer} is undefined. Because of this generalisation, we must not explicitly provide the target filenames.
+
+\end{answer}
+
+How would you now get Snakemake to create the \texttt{Hello/World.txt} target file?
+
+\begin{answer}
+
+\begin{lstlisting}
+# Explicityly request the target filename to be created:
+snakemake Hello/World.txt
+\end{lstlisting}
+
+\end{answer}
+
+How would you now get Snakemake to create the \texttt{Hola/World.txt} target file?
+
+\begin{answer}
+
+\begin{lstlisting}
+# Explicityly request the target filename to be created:
+snakemake Hola/World.txt
+\end{lstlisting}
+
+\end{answer}
+
+\end{questions}
+
+\end{steps}
 
 
 %------------------------
-\subsection{Wildcards}
+\subsection{Pseudo-Rules}
 %------------------------
 
-The above example \texttt{Snakefile} contains two almost identical rules with the only difference being that the first rule is for input/output
-files containing \texttt{Alsen} in theor paths, while the second rule is for input/output files containing \texttt{Baxter} in theor paths. This
-seems like an awful lot of redundant code for executing the same commands but on different files. Snakemake provides ``wildcards'' which are
-specified using curly braces in the \texttt{output} file paths and then reused within the \texttt{input} file paths and other parts of a rule
-definition.
+We have now see how wildcards can be used to generalise rules. This is a powerful feature of Snakemake, but this means we lose the convienience of
+being able to specify a rule name as the target since the wildcards are essentially undefined in that situation. We have also seen that if we do not
+explicitly specify a target, then Snakemake attempts to execute the first rule in the \texttt{Snakefile}. Unfortunately, if that rule makes use of
+wildcards, and error is thrown.
 
-Therefore, the two mapping rules defined in the above \texttt{Snakefile} can be generalised with the use of a \texttt{wildcard}, which we
-call \texttt{accession}, as follows:
+We can use pseudo-rules to define a list of target filenames for creation. These filenames are specified using the \texttt{input} directive only:
 
 \begin{lstlisting}
 rule all:
-	input:
-		"mapped/Alsen.bam",
-		"mapped/Baxter.bam",
+  input:
+    "Bonjour/World.txt",
+    "Ciao/World.txt",
+    "Hello/World.txt",
+    "Hola/World.txt",
 
-rule generalised_mapping:
-	input:
-		ref = "references/reference.fasta.gz",
-		r1  = "raw_reads/{accession}_R1.fastq.gz",
-		r2  = "raw_reads/{accession}_R2.fastq.gz",
-	output:
-		"mapped/{accession}.bam",
-	shell:
-		"""
-		bwa mem {input.ref} {input.r1} {input.r2} \
-		  | samtools view -b > {output}
-		"""
+rule hello_world:
+  output:
+    "{cheer}/World.txt",
+  shell:
+    """
+    echo "{wildcards.cheer}, World!" > {output}
+    """
 \end{lstlisting}
 
-This generalisation, now also means we can potentially specify an infinate number of \texttt{targets} on the commandline:
+By convention, the first pseudo-rule in the \texttt{Snakefile} is called \texttt{all} and specifies all the output filenames of the workflow. This now
+means we can execute this workflow in any of the following ways:
 
 \begin{lstlisting}
-snakemake \
-  Gladius.bam \
-  something_obscure.bam \
-  get_more_crazy.bam
+# Not specifying a target will result in Snakemake executing the
+# first rule in the Snakefile ("all" in this case)
+snakemake
+
+# Explicityly request the "all" rule
+snakemake all
+
+# Explicityly a cheer in Polish
+snakemake czesc/World.txt
 \end{lstlisting}
 
+When workflows get larger and the lists of filenames get bigger, specifying long lists of filenames in pseudo-rules can start to feel cumbersome.
+Since Snakemake syntax is an extension of Python, we can start to use some Python data structures and functions to help:
 
+\begin{lstlisting}
+cheers = ['Bonjour', 'Ciao', 'Hello', 'Hola']
 
+rule all:
+  input:
+    expand("{cheer}/World.txt", cheer=cheers),
 
+rule hello_world:
+  output:
+    "{cheer}/World.txt",
+  shell:
+    """
+    echo "{wildcards.cheer}, World!" > {output}
+    """
+\end{lstlisting}
 
+In the above example, we define a Python \texttt{list} called \texttt{cheers} which contains various translations of ``Hello'' in different languages. We then
+use the \texttt{expand} function in the \texttt{input} directive of the \texttt{all} rule to reconstitute a list of target filenames containing those
+translations available in the \texttt{cheers list}.
 
 \begin{bonus}
 
-If you're storming ahead of everyone else, why not take a look at these bonus questions/tasks:
+The use of multiple wildcards within the output filenames provide a very powerful approach to generalising rules. However, they can also start to complicate
+things when using ``expand'' to reconstitute a list of filenames using multiple wildcards. For instance, if we rerite our ``Hello, World!'' example
+to also translate the ``World'' word we might think to do it like this:
+
+\begin{lstlisting}
+cheers = ['Bonjour', 'Ciao', 'Hello', 'Hola']
+worlds = ['Monde', 'Mondo', 'World', 'Mundo']
+
+rule all:
+  input:
+    expand("{cheer}/{world}.txt", cheer=cheers, world=worlds),
+
+rule hello_world:
+  output:
+    "{cheer}/{world}.txt",
+  shell:
+    """
+    echo "{wildcards.cheer}, {wildcards.world}!" > {output}
+    """
+\end{lstlisting}
+
+Before executing the workflow, have a think about these questions:
 
 \begin{questions}
-Look at the \texttt{snakemake} help, what commandline argument would you use for snakemake to show the reason for
-a rule being executed?
-\end{questions}
+
+How many times do you think the \texttt{hello\_world} rule will be executed? 4 times or 16 times?
+
+Execute the workflow using \texttt{--dryrun} to see what would be executed and if you answered the above question correctly:
+
+\begin{lstlisting}
+snakemake --dryrun
+\end{lstlisting}
 
 \begin{answer}
-\begin{lstlisting}
-snakemake --reason
-\end{lstlisting}
+16 times - By default, \texttt{expand} will generate all combinations of the values stored within the specified wildcards (4*4=16 combinations in this case)
 \end{answer}
 
-\begin{questions}
-Without modifying the \texttt{Snakefile}, how might you create new Hello, world files using a different \texttt{cheer} such as
-\texttt{cześć} which is Polish for ``hello''?
 \end{questions}
 
-\begin{answer}
+We can force \texttt{expand} to only combine the first elements of the lists together, the second elements of the lists and so on. There by creating four
+combinations of the translated words. We do this by passing Python's \texttt{zip} function as the second positional argument to \texttt{expand}:
+
 \begin{lstlisting}
-snakemake --reason \
-  czesc/world.txt
+cheers = ['Bonjour', 'Ciao', 'Hello', 'Hola']
+worlds = ['Monde', 'Mondo', 'World', 'Mundo']
+
+rule all:
+  input:
+    expand("{cheer}/{world}.txt", zip, cheer=cheers, world=worlds),
+
+rule hello_world:
+  output:
+    "{cheer}/{world}.txt",
+  shell:
+    """
+    echo "{wildcards.cheer}, {wildcards.world}!" > {output}
+    """
 \end{lstlisting}
-\end{answer}
 
 \end{bonus}
+
+
 
 
 %========================
@@ -509,7 +633,9 @@ snakemake \
 \section{Troubleshooting}
 %========================
 
+%------------------------
 \subsection{Snakemake Install}
+%------------------------
 
 If you have a broken or incomplete snakemake installation, try the following steps to fix things:
 
@@ -523,18 +649,40 @@ conda env remove --name snakemake
 
 Now try reinstalling snakemake.
 
+%------------------------
 \subsection{Conda Software Environment Setup}
+%------------------------
 
 If your job failed or timed out, you will need to re-run conda software environment setup job again. However, you may first need to release the
 Snakemake lock which protects you from running multiple instances of the same workflow at the same time:
 
 \begin{lstlisting}
 snakemake \
+  --unlock
 \end{lstlisting}
-```
 
 To ensure Snakemake starts with a clean slate, delete the ``hidden'' \texttt{.snakemake} directory:
 
 \begin{lstlisting}
 rm -rf .snakemake
+\end{lstlisting}
+
+%------------------------
+\subsection{Getting Going After a Disconnect}
+%------------------------
+
+If you find that your connection to the server has been dropped, you can get yourself going again using this convienient block of commands:
+
+\begin{lstlisting}
+# Load the required software modules
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk \
+  singularity-3.2.1-gcc-5.4.0-tn5ndnb
+
+# Activate the snakemake conda environment and integrate shell autocompletion into bash
+conda activate snakemake
+complete -o bashdefault -C snakemake-bash-completion snakemake
+
+# Move to the correct directory location
+cd /shared/${USER}/snakemake-tutorial
 \end{lstlisting}
