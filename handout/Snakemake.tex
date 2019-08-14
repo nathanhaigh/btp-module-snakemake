@@ -725,10 +725,10 @@ snakemake \
 
 The jobs submitted to Slurm by running this command, as is, will fail. This is because commands being run by the various rules are expected to be available on the \texttt{PATH}
 and this is usually not the case on an HPC cluster. Snakemake provides the ability to execute jobs within a singularity container and also to utilise conda for setting 
-up software environments inwhich rules can be executed. Together, this provides an opportunity for establishing long-term reproduciblity in the execution of a workflow by placing
+up software environments in which rules can be executed. Together, this provides an opportunity for establishing long-term reproduciblity in the execution of a workflow by placing
 a conda environment inside a Singularity container.
 
-Conda environments are specified, per rule, using the \text{conda} directive associated with a rule. For the purpose of this workshop, each rule uses the exact same conda
+Conda environments are specified, per rule, using the \texttt{conda} directive associated with a rule. For the purpose of this workshop, each rule uses the exact same conda
 environment file \texttt{envs/tutorial.yml} like so:
 
 \begin{lstlisting}
