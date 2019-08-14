@@ -186,7 +186,7 @@ snakemake --version
 
 \end{steps}
 
-If you experience problems with the installation, head to the Troubleshooting section for help.
+If you experience problems with the installation, head to the \hyperref[sec:snake_trouble]{Troubleshooting} section for help.
 
 \begin{bonus}
 While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake}
@@ -238,7 +238,7 @@ simply echoing a string, \texttt{Hello, world!}, and redirecting that into the a
 
 \begin{steps}
 
-Create a working directory under \texttt{/shared/\${USER}}, and add the above \texttt{hello\_world} rule to a file called \texttt{Snakefile}:
+Create a working directory under \texttt{/shared/\$\{USER\}}, and add the above \texttt{hello\_world} rule to a file called \texttt{Snakefile}:
 
 \begin{lstlisting}
 # Create a working directory and move into it
@@ -373,7 +373,7 @@ rule hello_world_spannish:
 
 This isn't good as we have introduced a whole lot of redundancy by mostly doing a copy and paste and then changing a couple of words! There is a better way.
 
-Snakemake uses named ``wildcards'' to capture strings defined in the \texttt{output} filenames and refer back to them elsewhere within a rule. See here:
+Snakemake uses named ``wildcards'' to capture strings defined in the \texttt{output} filenames and a mechanism to refer back to them elsewhere within a rule. See here:
 
 \begin{lstlisting}
 rule hello_world:
@@ -477,7 +477,7 @@ snakemake
 # Explicityly request the "all" rule
 snakemake all
 
-# Explicityly a cheer in Polish
+# Explicitly a cheer in Polish
 snakemake czesc/World.txt
 \end{lstlisting}
 
@@ -567,19 +567,21 @@ rule hello_world:
 
 \end{bonus}
 
+\subsection{Take-Home Message}
 
-
+TODO
 
 %========================
 \section{Example Workflow}
 %========================
 
-We are going to work with an example Snakemake workflow to demonstrate how they are run before
-we get stuck into writing our own. This example workflow consists of the following steps:
+So far, we have only looked at rules which did not specify any \texttt{input} files. This means the \texttt{output} files are not dependant on any other files.
+We're now going to start looking an an example bioinformatics workflow which builds on the concepts you have already covered. This example workflow consists
+of the following steps:
 
 \begin{itemize}
-  \item Running FastQC across the raw reads
-  \item Aggregating the raw read FastQC reports using MultiQC
+  \item Running FastQC across raw read files
+  \item Aggregating raw read FastQC reports using MultiQC
   \item Performing adapter, quality, and read length filtering using Trimmomatic
   \item Running FastQC across the QC'd reads
   \item Aggregating the QC read FastQC reports using MultiQC
@@ -589,17 +591,29 @@ we get stuck into writing our own. This example workflow consists of the followi
 
 \begin{steps}
 
-Lets get the example workflow:
+Lets set up the example workflow:
 
 \begin{lstlisting}
-# Clone the repository
-git clone https://github.com/UofABioinformaticsHub/2019_EMBL-ABR_Snakemake_webinar ./example_workflow
+# Ensure a working directory exists and move into it
+mkdir -p /shared/${USER}/snakemake-tutorial
+cd /shared/${USER}/snakemake-tutorial
 
-cd example_workflow/snakemake-tutorial
+# Clone the example workflow repository from GitHub
+git clone https://github.com/UofABioinformaticsHub/snakemake-tutorial ./
+git checkout ronin-test
 \end{lstlisting}
 
-The most basic of Snakemake commands will execute the workflow, running jobs on the head node (your cluster
-sysadmin will probably growl at you). Lets be nice, and just do a \texttt{dryrun} for now:
+Typically, you will probably already have your raw data files available on your filesystem. To simulate this scenario, we have provided
+all the relevant files for you under \texttt{/shared/data/}. The example workflow expects the raw FASTQ files to exist under a \texttt{./raw\_reads/}
+subdirectory and the reference genome file to be under the \texttt{./references/} subdirectory. Instead of copying the files from \texttt{/shared/data/}
+and wasting valuable filesystem space, it is recommended that you mirror the provided directory structure in your current working directory
+(\texttt{/shared/\$\{USER\}/snakemake-tutorial}) using symlinks. This can be achieved by running:
+
+\begin{lstlisting}
+cp --recursive --symbolic-link /shared/data/* ./
+\end{lstlisting}
+
+Lets start by having a look at what the workflow looks like, the jobs which needs to be executed etc.
 
 \begin{lstlisting}
 snakemake \
@@ -609,7 +623,18 @@ snakemake \
 
 \begin{questions}
 
-Using the Snakemake help, how do you get Snakemake to print the shell commands it will execute for each job?
+How many \texttt{bwa\_mem}, \texttt{fastqc\_trimmed} and total jobs need to be run as part of this workflow?
+
+\begin{answer}
+
+\texttt{bwa\_mem}: 16
+\texttt{fastqc\_trimmed}: 32
+Total: 101
+
+\end{answer}
+
+Using the Snakemake help, what commandline argument can be used to get Snakemake to print the shell commands associated with each job? Once you know the answer
+try using it in conjunction with \texttt{--dryrun} to see how the Snakemake reporting has changed.
 
 \begin{answer}
 \begin{lstlisting}
@@ -621,6 +646,86 @@ snakemake \
 
 \end{questions}
 
+%------------------------
+\subsection{Graphs of Jobs and Rules}
+%------------------------
+
+While it's nice to see all the information about the jobs Snakemake will execute, sometimes a picture is worth a thousand words. So, lets look at two
+types of graphs which Snakemake can generate:
+
+\begin{itemize}
+  \item Directed Acyclic Graph (DAG) of the jobs (\texttt{--dag})
+  \item Rule graph showing dependencies between rules (\texttt{--rulegraph})
+\end{itemize}
+
+Snakemake generates graphs in the \texttt{dot} notation, a plain-text file format commonly used for describing the nodes and edges connecting them. The
+output can piped into Graphviz' \texttt{dot} program to convert create a \texttt{PDF}:
+
+\begin{lstlisting}
+snakemake \
+  --dag \
+| dot -Tpdf \
+> dag.pdf
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/dag.pdf}
+\caption{DAG of jobs where \texttt{accession} is \texttt{ACBarrie}.}
+\label{fig:dag}
+\end{figure}
+
+The DAG's can get very large, very quickly. Uncomment the \texttt{Alsen} and \texttt{Baxter} lines in the \texttt{ACCESSIONS} list at the top of the
+\texttt{Snakefile} and generate a new DAG. It will start to look like this:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/dag_bigger.pdf}
+\caption{DAG of jobs where \texttt{accession} is \texttt{ACBarrie}, \texttt{Alsen} or \texttt{Baxter}.}
+\label{fig:dag_bigger}
+\end{figure}
+
+Often it is enough to just look at the ``rulegraph'' which only contains information about the rules and the dependencies which exist between them:
+
+\begin{lstlisting}
+snakemake \
+  --rulegraph \
+| dot -Tpdf \
+> rulegraph.pdf
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/rulegraph.pdf}
+\caption{Graph of rules.}
+\label{fig:rulegraph}
+\end{figure}
+
+%------------------------
+\subsection{Executing Jobs on an HPC Cluster}
+%------------------------
+
+So far we have been running snakemake on the cluster head node and any jobs it has been executing have also been on the head node. So far, this has been OK
+since the jobs have been small and short-lived. However, individual jobs of a ``real-life'' bioinformatics workflow will have considerably larger resource
+(CPU and RAM) requirements. If you continue executing these resource hungry jobs on the head node, your cluster sysadmin will start to growl at you!
+
+Snakemake does not
+
+Snakemake provides the ability to execute jobs within a singularity container and to have a conda software environment set up within it. This provides an opportunity
+
+\begin{lstlisting}
+module load \
+  singularity-3.2.1-gcc-5.4.0-tn5ndnb
+
+# Create the conda environment(s), ahead of running the workflow, by submitting a job to slurm
+# This will take ~5mins
+sbatch --job-name 'snakemake-env_setup' --mem 2G --time 30:00 --wrap \
+  'snakemake --use-singularity --use-conda --create-envs-only'
+\end{lstlisting}
+
+
+
+
 %========================
 \section{Modify/extend the Workflow}
 %========================
@@ -630,7 +735,8 @@ snakemake \
 %========================
 
 %========================
-\section{Troubleshooting}
+\section{Snakemake Troubleshooting}
+\label{sec:snake_trouble}
 %========================
 
 %------------------------
