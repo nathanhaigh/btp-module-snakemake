@@ -117,10 +117,15 @@ module load \
   miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
 
 #####
-# One-time commands to integrate conda into bash
+# One-time commands
 #####
+# Integrate conda into bash
 conda init bash
 . ~/.bashrc
+
+# Change the default location into which conda saves packages and environments
+conda config --prepend pkgs_dirs /shared/${USER}/.conda/pkgs
+conda config --prepend envs_dirs /shared/${USER}/.conda/envs
 #####
 
 # Install snakemake by submitting a job to slurm - conda is a resource
