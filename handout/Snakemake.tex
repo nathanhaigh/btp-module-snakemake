@@ -707,11 +707,71 @@ snakemake \
 
 So far we have been running snakemake on the cluster head node and any jobs it has been executing have also been on the head node. So far, this has been OK
 since the jobs have been small and short-lived. However, individual jobs of a ``real-life'' bioinformatics workflow will have considerably larger resource
-(CPU and RAM) requirements. If you continue executing these resource hungry jobs on the head node, your cluster sysadmin will start to growl at you!
+(CPU and RAM) requirements. If you execute such resource hungry jobs on the head node, your cluster sysadmin will start to growl at you!
 
-Snakemake does not
+Snakemake does not officially integrate support any one execution backend. However, it does provide convienient hooks in the form of commandline arguments for specifying
+scripts for interacting with an execution backend (i.e. scripts for job submission, job status and job execution). The details of this is beyond the scope of this
+workshop. However, we provide these in the form of a Snakemake ``profile'' and demonstrate how this can be used for submitting jobs to a Slurm execution backend.
+In addition to this profile, we also provide files for setting default cluster configuration options such as job name, resource requirements etc.
 
-Snakemake provides the ability to execute jobs within a singularity container and to have a conda software environment set up within it. This provides an opportunity
+The basic command to ensure jobs are submitted to Slurm for execution are as follows:
+
+\begin{lstlisting}
+snakemake \
+  --profile profiles/slurm \
+  --cluster-config cluster-configs/default.yaml \
+  --cluster-config cluster-configs/ronin.yaml
+\end{lstlisting}
+
+The jobs submitted to Slurm by running this command, as is, will fail. This is because commands being run by the various rules are expected to be available on the \texttt{PATH}
+and this is usually not the case on an HPC cluster. Snakemake provides the ability to execute jobs within a singularity container and also to utilise conda for setting 
+up software environments inwhich rules can be executed. Together, this provides an opportunity for establishing long-term reproduciblity in the execution of a workflow by placing
+a conda environment inside a Singularity container.
+
+Conda environments are specified, per rule, using the \text{conda} directive associated with a rule. For the purpose of this workshop, each rule uses the exact same conda
+environment file \texttt{envs/tutorial.yml} like so:
+
+\begin{lstlisting}
+rule fastqc_trimmed:
+  input:
+    ...
+  output:
+    ...
+  conda:
+    "envs/tutorial.yml"
+  shell:
+    """
+    ...
+    """
+\end{lstlisting}
+
+\begin{questions}
+
+Take a look at the \texttt{envs/tutorial.yml}. What versions of \texttt{trimmomatic} and \texttt{bwa} are being used?
+
+\begin{answer}
+\texttt{trimmomatic}: 0.36
+\texttt{bwa}: 0.7.17
+\end{answer}
+
+Are these the latest version of currently available through Anaconda? Hint: search \url{https://anaconda.org/}
+
+\begin{answer}
+As of 14th Aug 2019, the latest versions of these two tools are:
+
+\texttt{trimmomatic}: 0.39 (\url{https://anaconda.org/search?q=trimmomatic})
+\texttt{bwa}: 0.7.17 (\url{https://anaconda.org/search?q=trimmomatic})
+\end{answer}
+
+\end{questions}
+
+Putting together the above mentioned slurm execution backend profile, cluster configuration files and conda environment file, we
+now have the basic command for submitting jobs to the slurm queue and to have those jobs executed within a singularity container using
+a conda software environment. However, before we start submitting jobs, it's a good idea to get the conda environment setup beforehand.
+This is bacuase conda is a notorious resource hog, so we want to submit the conda environment creation step to the cluster instead of
+it running on the head node.
+
+Lets setup the conda environment(s) first
 
 \begin{lstlisting}
 module load \
@@ -719,10 +779,28 @@ module load \
 
 # Create the conda environment(s), ahead of running the workflow, by submitting a job to slurm
 # This will take ~5mins
-sbatch --job-name 'snakemake-env_setup' --mem 2G --time 30:00 --wrap \
+sbatch --job-name 'conda-env_setup' --mem 2G --time 30:00 --wrap \
   'snakemake --use-singularity --use-conda --create-envs-only'
 \end{lstlisting}
 
+Once the conda environment setup job completes successfully, we are now ready to run our workflow and have it submit jobs for execution by the
+cluster. This is most appropriately done on the head node rather than submitting it as a job to slurm. This is because the Snakemake process is
+essentially monitoring the slurm cluster for job status changes. As jobs complete sucessfully, Snakemake submits new jobs as and when their input
+dependencies have been satisfied. Because of this, the snakemake process is active for long as the workflow takes to complete - this could be
+many days or weeks depending on the size of the workflow and data set.
+
+We're now ready to run the workflow and have the jobs submitted to the slurm queue:
+
+\begin{lstlisting}
+snakemake \
+  --profile profiles/slurm \
+  --cluster-config cluster-configs/default.yaml \
+  --cluster-config cluster-configs/ronin.yaml \
+  --use-singularity \
+  --use-conda
+\end{lstlisting}
+
+The provided profile, changes a few of the default values for some of Snakemake's commandline arguments.
 
 
 
