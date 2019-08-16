@@ -577,6 +577,142 @@ rule hello_world:
 TODO
 
 %========================
+\section{Implementing A Workflow in Snakemake}
+%========================
+
+We're going to start with a bash script which performs the following analysis steps across a bunch of samples (accessions):
+
+\begin{itemize}
+  \item Running FastQC across raw read files
+  \item Performing adapter, quality, and read length filtering using Trimmomatic
+  \item Aggregating raw read FastQC reports using MultiQC
+  \item Index the reference FASTA file
+  \item Perform a \texttt{bwa-mem} read alignment
+\end{itemize}
+
+To provide you with the ability to submit jobs etc to the slurm queue, we've provided a Snakemake template repository for you. That way,
+you can concentrate on implementing a workflow. 
+
+\begin{lstlisting}
+# Ensure a working directory exists and move into it
+mkdir -p /shared/${USER}/snakemake-tutorial
+cd /shared/${USER}/snakemake-tutorial
+
+# Clone the Snakemake template repository from GitHub
+git clone https://github.com/UofABioinformaticsHub/snakemake_template ./
+\end{lstlisting}
+
+Add the raw read data and reference files:
+
+\begin{lstlisting}
+cp --recursive --symbolic-link /shared/data/* ./
+\end{lstlisting}
+
+Setup a conda software environment for the analysis
+
+\begin{lstlisting}
+# Load miniconda
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
+
+# Install snakemake by submitting a job to slurm
+# This will take ~5mins
+sbatch --job-name 'tool-install' --mem 4G --time 15:00 --wrap \
+ "conda create \
+  --name tutorial \
+  --channel bioconda --channel conda-forge \
+  --yes \
+  fastqc=0.11.8 \
+  multiqc=1.7 \
+  trimmomatic=0.36 \
+  pigz=2.3.4 \
+  bwa=0.7.17 \
+  samtools=1.9 \
+  htslib=1.9"
+\end{lstlisting}
+
+Starting script (\texttt{analysis.sh}):
+
+\begin{lstlisting}
+#!/bin/bash
+#SBATCH --job-name analysis
+#SBATCH --mem 1G
+#SBATCH --ntasks 1 --cpus-per-task 1
+#SBATCH --time 00:10:00
+
+# Use a conda software environment for this analysis script
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
+conda activate tutorial
+
+ACCESSIONS=(
+  "ACBarrie"
+  "Alsen"
+  "Baxter"
+  "Chara"
+  "Drysdale"
+  "Excalibur"
+  "Gladius"
+  "H45"
+  "Kukri"
+  "Pastor"
+  "RAC875"
+  "Volcanii"
+  "Westonia"
+  "Wyalkatchem"
+  "Xiaoyan"
+  "Yitpi"
+)
+
+# Download adapter file for trimmomatic
+mkdir -p misc/trimmomatic_adapters
+curl "raw.githubusercontent.com/timflutre/trimmomatic/master/adapters/TruSeq3-PE.fa" > misc/trimmomatic_adapters/TruSeq3-PE.fa
+
+# Index reference genome file
+bwa index -p references/reference.fasta.gz -a bwtsw references/reference.fasta.gz
+
+for ACCESSION in ${ACCESSIONS[@]}; do
+  # FastQC the raw reads
+  fastqc --threads 1 raw_reads/${ACCESSION}_R1.fastq.gz raw_reads/${ACCESSION}_R2.fastq.gz
+
+  # Adapter/quality trim raw reads
+  mkdir -p qc_reads
+  trimmomatic PE \
+      -threads 1 \
+      raw_reads/${ACCESSION}_R1.fastq.gz raw_reads/${ACCESSION}_R2.fastq.gz \
+      qc_reads/${ACCESSION}_R1.fastq.gz qc_reads/${ACCESSION}_R1.unpaired.fastq.gz \
+      qc_reads/${ACCESSION}_R2.fastq.gz qc_reads/${ACCESSION}_R2.unpaired.fastq.gz \
+      ILLUMINACLIP:misc/trimmomatic_adapters/TruSeq3-PE.fa:2:30:10:3:true \
+      LEADING:2 \
+      TRAILING:2 \
+      SLIDINGWINDOW:4:15 \
+      MINLEN:36
+
+  # Map QC'd reads to the reference genome
+  mkdir -p mapped
+  bwa mem -t 1 \
+    -R '@RG\tID:'${ACCESSION}'\tSM:'${ACCESSION} \
+    references/reference.fasta.gz \
+    qc_reads/${ACCESSION}_R1.fastq.gz qc_reads/${ACCESSION}_R2.fastq.gz \
+  | samtools view -b \
+  > mapped/${ACCESSION}.bam
+done
+
+# Aggregate FastQC results from raw reads
+mkdir -p reports
+multiqc --force \
+  --filename reports/raw_reads_multiqc.html \
+  raw_reads/*_R?_fastqc.zip
+\end{lstlisting}
+
+Submit the script:
+
+\begin{lstlisting}
+#sbatch analysis.sh
+\end{lstlisting}
+
+
+%========================
 \section{Example Workflow}
 %========================
 
