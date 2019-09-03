@@ -95,8 +95,36 @@ submitted jobs for their completion status and submit new jobs as dependent jobs
 \begin{steps}
 First up, lets connect to the head node of the HPC cluster using \texttt{ssh}.
 
-\emph{See your local facilitator for connection details. You should have one user account per person.}
+\emph{See your local facilitator for connection details. You will have one user account per person.}
 \end{steps}
+
+%------------------------
+\subsection{Monitoring Slurm Jobs}
+%------------------------
+
+\begin{note}
+
+You can monitor all jobs in the slurm squeue, or just your own job(s) using the slurm command \texttt{squeue}:
+
+\begin{lstlisting}
+# All jobs in the queue
+squeue
+
+# Just your own jobs
+squeue --user ${USER}
+\end{lstlisting}
+
+For convienience we have provided you with the \texttt{sq} function which produces nicer output than the default \texttt{squeue} and only shows your own jobs:
+
+\begin{lstlisting}
+# Your own jobs
+sq
+
+# Someone elses jobs
+sq --user ${SOMEONE_ELSE}
+\end{lstlisting}
+
+\end{note}
 
 %------------------------
 \subsection{Install Snakemake}
@@ -123,54 +151,52 @@ module load \
 conda init bash
 . ~/.bashrc
 
-# Change the default location into which conda saves packages and environments
+# Change the default location into which conda saves packages
+# and environments
 conda config --prepend pkgs_dirs /shared/${USER}/.conda/pkgs
 conda config --prepend envs_dirs /shared/${USER}/.conda/envs
+
+# Change the default channels used for finding software and
+# resolving dependencies
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
 #####
-
-# Install snakemake by submitting a job to slurm - conda is a resource
-# hog so your HPC sysadmins will like you for doing this
-# This might take 10-20mins
-sbatch --job-name 'snakemake-install' --mem 4G --time 30:00 --wrap \
- "conda create \
-  --name snakemake \
-  --channel bioconda --channel conda-forge \
-  --yes \
-  snakemake=${SNAKEMAKE_VERSION}"
 \end{lstlisting}
-
-The above \texttt{conda create} command, submitted to slurm, will take 10-20mins to complete. 
 
 \end{steps}
 
-\begin{note}
+\begin{warning}
 
-You can monitor all jobs in the slurm squeue, or just your own job(s) using the slurm command \texttt{squeue}:
-
-\begin{lstlisting}
-# All jobs in the queue
-squeue
-
-# Just your own jobs
-squeue --user ${USER}
-\end{lstlisting}
-
-For convienience we have provided you with the \texttt{sq} function which produces nicer output than the default \texttt{squeue} and only shows your own jobs:
+Do NOT run the following command! This is provided for future reference so you know how to Install Snakemake on another system. Rather than
+creating the conda environment from scratch, we'll simply copy a pre-existing directory so we save time, and possible headaches.
 
 \begin{lstlisting}
-# Your own jobs
-sq
-
-# Someone elses jobs
-sq --user ${SOMEONE_ELSE}
+# Install snakemake by submitting a job to slurm - conda
+# is a resource hog so your HPC sysadmins will like you
+# for doing this.
+# This might take 5-10mins
+sbatch --job-name 'snakemake-install' --mem 4G --time 30:00 --wrap \
+ "conda create \
+  --name snakemake \
+  --yes \
+  snakemake=${SNAKEMAKE_VERSION:-5.5.4}"
 \end{lstlisting}
 
-\end{note}
+Once your job completes successfully, snakemake installation is complete.
 
-Once your job completes successfully, snakemake installation is complete. All that is left to do is to
-activate the environment which will make \texttt{snakemake} available on the command line:
+\end{warning}
 
 \begin{steps}
+
+Simply copy the following conda directory and you will have Snakemake setup and ready to go:
+
+\begin{lstlisting}
+mkdir -p /shared/${USER}
+cp -r /shared/ubuntu/.conda /shared/${USER}/
+\end{lstlisting}
+
+All that is left to do is to activate the environment which will make \texttt{snakemake} available on the command line:
 
 \begin{lstlisting}
 # Activate the newly created conda environment
@@ -194,18 +220,268 @@ snakemake --version
 If you experience problems with the installation, head to the \hyperref[sec:snake_trouble]{Troubleshooting} section for help.
 
 \begin{bonus}
+
 While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake}
 within this conda environment if there is a new version available.
 
 \begin{answer}
 \begin{lstlisting}
 conda update \
-  --channel bioconda --channel conda-forge \
   snakemake
 \end{lstlisting}
 \end{answer}
 
 \end{bonus}
+
+
+%========================
+\section{Your First Minimal Snakefile}
+%========================
+
+To get started with Snakemake, all you need to do is create a \texttt{Snakefile} (note the capitalisation) containing a rule
+which specifies how to create an output file.
+
+Setup a working directory for this task:
+
+\begin{lstlisting}
+mkdir -p /shared/${USER}/snakemake/minimal
+cd /shared/${USER}/snakemake/minimal
+\end{lstlisting}
+
+Create a file called \texttt{Snakefile} and add the following content:
+
+\begin{lstlisting}
+rule hello_world:
+	output:
+		"Hello/World.txt",
+	shell:
+		"""
+		echo "Hello, World!" > {output}
+		"""
+\end{lstlisting}
+
+You can now run this workflow in one of 3 ways:
+
+\begin{lstlisting}
+# Request Snakemake to generate the specific output file
+# "Hello/World.txt"
+snakemake Hello/World.txt
+
+# Request Snakemake to execute the specific rule "hello_world"
+snakemake hello_world
+
+# Request Snakemake to execute the first rule in the Snakefile
+snakemake
+\end{lstlisting}
+
+\begin{questions}
+
+What happens if you run one of the above commands two or more times? Why?
+
+\begin{answer}
+Snakemake found the requested output file was already there so decided not to regenerate it.
+\end{answer}
+
+\end{questions}
+
+
+
+
+
+%========================
+\section{Reimplementing A Workflow in Snakemake}
+%========================
+
+As this workshop requires experience with the Linux command line and at least one programming language, we are
+going to jump straight into reimplementing a common bioinformatic analysis as a Snakemake workflow. We'll start with
+a single, monolithic bash script which performs all the tasks we want to perform:
+
+\begin{itemize}
+  \item Run FastQC across all the raw read files
+  \item Adapter, quality, and read length filtering using Trimmomatic
+  \item Aggregating FastQC reports from the raw reads using MultiQC
+  \item Index the reference FASTA file
+  \item Perform a \texttt{bwa-mem} read alignment
+\end{itemize}
+
+Here's the actual script (\texttt{analysis.sh}):
+
+\begin{lstlisting}
+#!/bin/bash
+#SBATCH --job-name analysis
+#SBATCH --mem 1G
+#SBATCH --ntasks 1 --cpus-per-task 1
+#SBATCH --time 00:10:00
+
+# Use a conda software environment for this analysis script
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
+conda activate tutorial
+
+SAMPLES=(
+  "ACBarrie"
+  "Alsen"
+  "Baxter"
+  "Chara"
+  "Drysdale"
+  "Excalibur"
+  "Gladius"
+  "H45"
+  "Kukri"
+  "Pastor"
+  "RAC875"
+  "Volcanii"
+  "Westonia"
+  "Wyalkatchem"
+  "Xiaoyan"
+  "Yitpi"
+)
+
+# Download adapter file for trimmomatic
+mkdir -p misc/trimmomatic_adapters
+curl "raw.githubusercontent.com/timflutre/trimmomatic/master/adapters/TruSeq3-PE.fa" > misc/trimmomatic_adapters/TruSeq3-PE.fa
+
+# Index reference genome file
+#####
+bwa index -p references/reference.fasta.gz -a bwtsw references/reference.fasta.gz
+
+for SAMPLE in ${SAMPLES[@]}; do
+  # FastQC the raw reads
+  #####
+  fastqc --threads 1 raw_reads/${SAMPLE}_R1.fastq.gz raw_reads/${SAMPLE}_R2.fastq.gz
+
+  # Adapter/quality trim raw reads
+  #####
+  mkdir -p qc_reads
+  trimmomatic PE \
+      -threads 1 \
+      raw_reads/${SAMPLE}_R1.fastq.gz raw_reads/${SAMPLE}_R2.fastq.gz \
+      qc_reads/${SAMPLE}_R1.fastq.gz qc_reads/${SAMPLE}_R1.unpaired.fastq.gz \
+      qc_reads/${SAMPLE}_R2.fastq.gz qc_reads/${SAMPLE}_R2.unpaired.fastq.gz \
+      ILLUMINACLIP:misc/trimmomatic_adapters/TruSeq3-PE.fa:2:30:10:3:true \
+      LEADING:2 \
+      TRAILING:2 \
+      SLIDINGWINDOW:4:15 \
+      MINLEN:36
+
+  # Map QC'd reads to the reference genome
+  #####
+  mkdir -p mapped
+  bwa mem -t 1 \
+    -R '@RG\tID:'${SAMPLE}'\tSM:'${SAMPLE} \
+    references/reference.fasta.gz \
+    qc_reads/${SAMPLE}_R1.fastq.gz qc_reads/${SAMPLE}_R2.fastq.gz \
+  | samtools view -b \
+  > mapped/${SAMPLE}.bam
+done
+
+# Aggregate FastQC results from raw reads
+#####
+mkdir -p reports
+multiqc --force \
+  --filename reports/raw_reads_multiqc.html \
+  raw_reads/*_R?_fastqc.zip
+\end{lstlisting}
+
+This type of script is very common in the bioinformatics field but it has several significant limitations:
+
+\begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
+  \item[Not parallelised]\hfill\\
+    loops over input files, executing independant commands in sequential order
+  \item[Resources over-specified]\hfill\\
+    the compute resources needed by the script are dictated by the command(s) with the largest requirement(s)
+  \item[Not idempotent]\hfill\\
+    significant programming logic is needed to wrap around commands to detect failures and only execute parts of the analysis which failed in earlier attempts
+\end{description}
+
+By working with this script, and reimplementing it in Snakemake we hope to demonstrate how easily you can convert your own preexisting
+analysis pipelines and reap the rewards of doing so.
+
+
+
+
+
+To provide you with the ability to submit jobs etc to the slurm queue, we've provided a Snakemake template repository for you. That way,
+you can concentrate on implementing a workflow. 
+
+\begin{lstlisting}
+# Ensure a working directory exists and move into it
+mkdir -p /shared/${USER}/snakemake-tutorial
+cd /shared/${USER}/snakemake-tutorial
+
+# Clone the Snakemake template repository from GitHub
+git clone https://github.com/UofABioinformaticsHub/snakemake_template ./
+\end{lstlisting}
+
+Add the raw read data and reference files:
+
+\begin{lstlisting}
+cp --recursive --symbolic-link /shared/data/* ./
+\end{lstlisting}
+
+Setup a conda software environment for the analysis
+
+\begin{lstlisting}
+# Load miniconda
+module load \
+  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
+
+# Install snakemake by submitting a job to slurm
+# This will take ~5mins
+sbatch --job-name 'tool-install' --mem 4G --time 15:00 --wrap \
+ "conda create \
+  --name tutorial \
+  --channel bioconda --channel conda-forge \
+  --yes \
+  fastqc=0.11.8 \
+  multiqc=1.7 \
+  trimmomatic=0.36 \
+  pigz=2.3.4 \
+  bwa=0.7.17 \
+  samtools=1.9 \
+  htslib=1.9"
+\end{lstlisting}
+
+
+
+Submit the script:
+
+\begin{lstlisting}
+#sbatch analysis.sh
+\end{lstlisting}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%========================
+\section{Your First Snakefile}
+%========================
+
+
+\begin{lstlisting}
+rule fastqc_a_file:
+	input:
+		"data/0Hour_001_1.fq.gz",
+	output:
+		"data/0Hour_001_1_fastqc.html",
+		"data/0Hour_001_1_fastqc.zip",
+	conda:
+		"envs/default"
+	shell:
+		"""
+		fastqc data/0Hour_001_1.fq.gz
+		"""
+\end{lstlisting}
 
 
 %========================
@@ -576,140 +852,14 @@ rule hello_world:
 
 TODO
 
-%========================
-\section{Implementing A Workflow in Snakemake}
-%========================
 
-We're going to start with a bash script which performs the following analysis steps across a bunch of samples (accessions):
 
-\begin{itemize}
-  \item Running FastQC across raw read files
-  \item Performing adapter, quality, and read length filtering using Trimmomatic
-  \item Aggregating raw read FastQC reports using MultiQC
-  \item Index the reference FASTA file
-  \item Perform a \texttt{bwa-mem} read alignment
-\end{itemize}
 
-To provide you with the ability to submit jobs etc to the slurm queue, we've provided a Snakemake template repository for you. That way,
-you can concentrate on implementing a workflow. 
 
-\begin{lstlisting}
-# Ensure a working directory exists and move into it
-mkdir -p /shared/${USER}/snakemake-tutorial
-cd /shared/${USER}/snakemake-tutorial
 
-# Clone the Snakemake template repository from GitHub
-git clone https://github.com/UofABioinformaticsHub/snakemake_template ./
-\end{lstlisting}
 
-Add the raw read data and reference files:
 
-\begin{lstlisting}
-cp --recursive --symbolic-link /shared/data/* ./
-\end{lstlisting}
 
-Setup a conda software environment for the analysis
-
-\begin{lstlisting}
-# Load miniconda
-module load \
-  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
-
-# Install snakemake by submitting a job to slurm
-# This will take ~5mins
-sbatch --job-name 'tool-install' --mem 4G --time 15:00 --wrap \
- "conda create \
-  --name tutorial \
-  --channel bioconda --channel conda-forge \
-  --yes \
-  fastqc=0.11.8 \
-  multiqc=1.7 \
-  trimmomatic=0.36 \
-  pigz=2.3.4 \
-  bwa=0.7.17 \
-  samtools=1.9 \
-  htslib=1.9"
-\end{lstlisting}
-
-Starting script (\texttt{analysis.sh}):
-
-\begin{lstlisting}
-#!/bin/bash
-#SBATCH --job-name analysis
-#SBATCH --mem 1G
-#SBATCH --ntasks 1 --cpus-per-task 1
-#SBATCH --time 00:10:00
-
-# Use a conda software environment for this analysis script
-module load \
-  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
-conda activate tutorial
-
-ACCESSIONS=(
-  "ACBarrie"
-  "Alsen"
-  "Baxter"
-  "Chara"
-  "Drysdale"
-  "Excalibur"
-  "Gladius"
-  "H45"
-  "Kukri"
-  "Pastor"
-  "RAC875"
-  "Volcanii"
-  "Westonia"
-  "Wyalkatchem"
-  "Xiaoyan"
-  "Yitpi"
-)
-
-# Download adapter file for trimmomatic
-mkdir -p misc/trimmomatic_adapters
-curl "raw.githubusercontent.com/timflutre/trimmomatic/master/adapters/TruSeq3-PE.fa" > misc/trimmomatic_adapters/TruSeq3-PE.fa
-
-# Index reference genome file
-bwa index -p references/reference.fasta.gz -a bwtsw references/reference.fasta.gz
-
-for ACCESSION in ${ACCESSIONS[@]}; do
-  # FastQC the raw reads
-  fastqc --threads 1 raw_reads/${ACCESSION}_R1.fastq.gz raw_reads/${ACCESSION}_R2.fastq.gz
-
-  # Adapter/quality trim raw reads
-  mkdir -p qc_reads
-  trimmomatic PE \
-      -threads 1 \
-      raw_reads/${ACCESSION}_R1.fastq.gz raw_reads/${ACCESSION}_R2.fastq.gz \
-      qc_reads/${ACCESSION}_R1.fastq.gz qc_reads/${ACCESSION}_R1.unpaired.fastq.gz \
-      qc_reads/${ACCESSION}_R2.fastq.gz qc_reads/${ACCESSION}_R2.unpaired.fastq.gz \
-      ILLUMINACLIP:misc/trimmomatic_adapters/TruSeq3-PE.fa:2:30:10:3:true \
-      LEADING:2 \
-      TRAILING:2 \
-      SLIDINGWINDOW:4:15 \
-      MINLEN:36
-
-  # Map QC'd reads to the reference genome
-  mkdir -p mapped
-  bwa mem -t 1 \
-    -R '@RG\tID:'${ACCESSION}'\tSM:'${ACCESSION} \
-    references/reference.fasta.gz \
-    qc_reads/${ACCESSION}_R1.fastq.gz qc_reads/${ACCESSION}_R2.fastq.gz \
-  | samtools view -b \
-  > mapped/${ACCESSION}.bam
-done
-
-# Aggregate FastQC results from raw reads
-mkdir -p reports
-multiqc --force \
-  --filename reports/raw_reads_multiqc.html \
-  raw_reads/*_R?_fastqc.zip
-\end{lstlisting}
-
-Submit the script:
-
-\begin{lstlisting}
-#sbatch analysis.sh
-\end{lstlisting}
 
 
 %========================
