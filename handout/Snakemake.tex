@@ -172,28 +172,28 @@ Do NOT run the following command! This is provided for future reference so you k
 creating the conda environment from scratch, we'll simply copy a pre-existing directory so we save time, and possible headaches.
 
 \begin{lstlisting}
-# Install snakemake by submitting a job to slurm - conda
-# is a resource hog so your HPC sysadmins will like you
-# for doing this.
+# Install snakemake using conda
 # This might take 5-10mins
-sbatch --job-name 'snakemake-install' --mem 4G --time 30:00 --wrap \
- "conda create \
+conda create \
   --name snakemake \
   --yes \
-  snakemake=${SNAKEMAKE_VERSION:-5.5.4}"
+  snakemake=${SNAKEMAKE_VERSION:-5.5.4}
 \end{lstlisting}
 
-Once your job completes successfully, snakemake installation is complete.
+Snakemake installation is now complete.
 
 \end{warning}
 
 \begin{steps}
 
-Simply copy the following conda directory and you will have Snakemake setup and ready to go:
+For the purposes of this workshop, simply copy the following \texttt{.conda} directory and you
+will have Snakemake setup and ready to go:
 
 \begin{lstlisting}
-mkdir -p /shared/${USER}
-cp -r /shared/ubuntu/.conda /shared/${USER}/
+mkdir --parents /shared/${USER}
+cp --recursive \
+  /shared/ubuntu/.conda \
+  /shared/${USER}/
 \end{lstlisting}
 
 All that is left to do is to activate the environment which will make \texttt{snakemake} available on the command line:
@@ -244,7 +244,7 @@ which specifies how to create an output file.
 Setup a working directory for this task:
 
 \begin{lstlisting}
-mkdir -p /shared/${USER}/snakemake/minimal
+mkdir --parents /shared/${USER}/snakemake/minimal
 cd /shared/${USER}/snakemake/minimal
 \end{lstlisting}
 
@@ -285,16 +285,94 @@ Snakemake found the requested output file was already there so decided not to re
 \end{questions}
 
 
-
-
-
 %========================
-\section{Reimplementing A Workflow in Snakemake}
+\section{Generalising Rules with Wildcards}
 %========================
 
-As this workshop requires experience with the Linux command line and at least one programming language, we are
-going to jump straight into reimplementing a common bioinformatic analysis as a Snakemake workflow. We'll start with
-a single, monolithic bash script which performs all the tasks we want to perform:
+The original \texttt{hello\_world} rule wasn't very flexible. We couldn't say ``Hello, World!'' in Spanish, Polish
+or French. However, we can generalise the rule using ``wildcards'':
+
+\begin{lstlisting}
+rule hello_world:
+	output:
+		"{cheer}/{world}.txt",
+	shell:
+		"""
+		echo "{wildcards.cheer}, {wildcards.world}!" > {output}
+		"""
+\end{lstlisting}
+
+Now we can use whatever language we want:
+
+\begin{lstlisting}
+# In English
+snakemake Hello/World.txt
+
+# In Polish
+snakemake Czesc/Swiat.txt
+
+# In French and Spanish at the same time
+snakemake Monde/Monde.txt Ciao/Mondo.txt
+\end{lstlisting}
+
+Take a look at the files created:
+
+\begin{lstlisting}
+tree ./
+\end{lstlisting}
+
+%========================
+\section{Submitting Jobs to Slurm}
+%========================
+
+By default, Snakemake executes jobs on the same computer on which it is running. For Snakemake to be able to
+submit jobs to a cluster resource management/queuing system, such as Slurm, we can use a ``profile'' which
+convieniently contains scripts for job submission and monitoring as well as setting some additional Snakemake
+command line arguments so it can ``talk'' to a cluster backend.
+
+To avoid having to delve into implementing our own ``profile'' for use with our Slurm cluster, we have created
+a Slurm profile ready for you to use. So lets grab it:
+
+\begin{lstlisting}
+# Ensure a working directory exists and move into it
+mkdir --parents /shared/${USER}/snakemake/tutorial
+cd /shared/${USER}/snakemake/tutorial
+
+# Clone the Snakemake template repository from GitHub
+git clone https://github.com/UofABioinformaticsHub/snakemake_template ./
+
+# Checkout the "simple" branch
+git checkout simple
+\end{lstlisting}
+
+The \texttt{Snakefile} in this branch of the repository is the same ``Hello, World!'' example you created above,
+with wildcards. Lets see how we use the provided ``profile'' to get Snakemake to submit jobs to Slurm:
+
+\begin{lstlisting}
+snakemake \
+  --profile profiles/slurm \
+  Hello/World.txt Czesc/Swiat.txt Monde/Monde.txt Ciao/Mondo.txt
+\end{lstlisting}
+
+If the \texttt{STDOUT} and \texttt{STDERR} of the command(s) in a rule are not explicitly sent to a file, then they will
+end up in Slurm's log file for a particular job which is normally something like \texttt{slurm-<job\_id>.out}. This isn't
+that helpful for debugging purposes, so the provided profile changes this to \texttt{logs/<rule\_name>/<wildcards>.out}
+e.g. \texttt{logs/hello\_world/cheer=Ciao,world=Mondo.out}.
+
+Cleanup after yourself!
+
+\begin{lstlisting}
+snakemake \
+  --delete-all-output \
+  Hello/World.txt Czesc/Swiat.txt Monde/Monde.txt Ciao/Mondo.txt
+\end{lstlisting}
+
+%========================
+\section{A Bash ``Pipeline''}
+%========================
+
+A bioinformatic ``pipeline'' is commonly a single, monolithic bash script which performs all the tasks which need
+to be performed. For example, someone might have written a script for performing the following tasks:
 
 \begin{itemize}
   \item Run FastQC across all the raw read files
@@ -304,86 +382,16 @@ a single, monolithic bash script which performs all the tasks we want to perform
   \item Perform a \texttt{bwa-mem} read alignment
 \end{itemize}
 
-Here's the actual script (\texttt{analysis.sh}):
+We have this script available for you on the \texttt{tutorial} branch, switch to it and have a look:
 
 \begin{lstlisting}
-#!/bin/bash
-#SBATCH --job-name analysis
-#SBATCH --mem 1G
-#SBATCH --ntasks 1 --cpus-per-task 1
-#SBATCH --time 00:10:00
+git checkout tutorial
 
-# Use a conda software environment for this analysis script
-module load \
-  miniconda3-4.6.14-gcc-5.4.0-kkzv7zk
-conda activate tutorial
-
-SAMPLES=(
-  "ACBarrie"
-  "Alsen"
-  "Baxter"
-  "Chara"
-  "Drysdale"
-  "Excalibur"
-  "Gladius"
-  "H45"
-  "Kukri"
-  "Pastor"
-  "RAC875"
-  "Volcanii"
-  "Westonia"
-  "Wyalkatchem"
-  "Xiaoyan"
-  "Yitpi"
-)
-
-# Download adapter file for trimmomatic
-mkdir -p misc/trimmomatic_adapters
-curl "raw.githubusercontent.com/timflutre/trimmomatic/master/adapters/TruSeq3-PE.fa" > misc/trimmomatic_adapters/TruSeq3-PE.fa
-
-# Index reference genome file
-#####
-bwa index -p references/reference.fasta.gz -a bwtsw references/reference.fasta.gz
-
-for SAMPLE in ${SAMPLES[@]}; do
-  # FastQC the raw reads
-  #####
-  fastqc --threads 1 raw_reads/${SAMPLE}_R1.fastq.gz raw_reads/${SAMPLE}_R2.fastq.gz
-
-  # Adapter/quality trim raw reads
-  #####
-  mkdir -p qc_reads
-  trimmomatic PE \
-      -threads 1 \
-      raw_reads/${SAMPLE}_R1.fastq.gz raw_reads/${SAMPLE}_R2.fastq.gz \
-      qc_reads/${SAMPLE}_R1.fastq.gz qc_reads/${SAMPLE}_R1.unpaired.fastq.gz \
-      qc_reads/${SAMPLE}_R2.fastq.gz qc_reads/${SAMPLE}_R2.unpaired.fastq.gz \
-      ILLUMINACLIP:misc/trimmomatic_adapters/TruSeq3-PE.fa:2:30:10:3:true \
-      LEADING:2 \
-      TRAILING:2 \
-      SLIDINGWINDOW:4:15 \
-      MINLEN:36
-
-  # Map QC'd reads to the reference genome
-  #####
-  mkdir -p mapped
-  bwa mem -t 1 \
-    -R '@RG\tID:'${SAMPLE}'\tSM:'${SAMPLE} \
-    references/reference.fasta.gz \
-    qc_reads/${SAMPLE}_R1.fastq.gz qc_reads/${SAMPLE}_R2.fastq.gz \
-  | samtools view -b \
-  > mapped/${SAMPLE}.bam
-done
-
-# Aggregate FastQC results from raw reads
-#####
-mkdir -p reports
-multiqc --force \
-  --filename reports/raw_reads_multiqc.html \
-  raw_reads/*_R?_fastqc.zip
+less analysis.sh
 \end{lstlisting}
 
-This type of script is very common in the bioinformatics field but it has several significant limitations:
+While the author of such a script should be commended for their efforts in documenting their analysis using a script,
+it has several significant limitations:
 
 \begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
   \item[Not parallelised]\hfill\\
@@ -394,15 +402,367 @@ This type of script is very common in the bioinformatics field but it has severa
     significant programming logic is needed to wrap around commands to detect failures and only execute parts of the analysis which failed in earlier attempts
 \end{description}
 
-By working with this script, and reimplementing it in Snakemake we hope to demonstrate how easily you can convert your own preexisting
-analysis pipelines and reap the rewards of doing so.
+\begin{questions}
+
+How might \emph{\textbf{you}} modify the above script to:
+
+\begin{itemize}
+  \item Add new samples
+  \item Rerun the script if you find one of the files generated is corrupt
+  \item Include readgroup information at the \texttt{bwa-mem} step (\texttt{-b} argumanet)
+\end{itemize}
+
+How would you avoid rerunning commands which take a long time and already completed sucessfully
+on a previous run e.g. the reference index, \texttt{bwa-mem} etc?
+
+\begin{answer}
+
+With difficulty!
+Enter - workflow management systems like Snakemake or Nextflow.
+
+\end{answer}
+
+\end{questions}
+
+
+%========================
+\section{Reimplementing A Workflow in Snakemake}
+%========================
+
+We will walk you through the steps of reimplementing the first few steps of the above script into a Snakemake workflow. Along the way,
+we will introduce the core concepts of Snakemake and then ask you to reimplement the \texttt{bwa-mem} step yourselves. For those
+working quickly, you will have the opportunity to reimplement the \texttt{multiqc} step. This will provide you with a foundation
+for you to be able to convert your own workflows into Snakemake rules and begin reaping the rewards of being able to run your analyses
+in Snakemake.
+
+%------------------------
+\subsection{Getting the Data}
+%------------------------
+
+We've provided you with some real data whole genome sequencing (WGS) data from wheat together with a small chunk of the wheat genome.
+The data set is small enough so each step in the analysis will take less than a couple of minutes to run. We have a copy of this data
+available locally to save on badnwidth, time and the possibility we are detected as a DDoS attack on some poor remote server!
+
+\begin{lstlisting}
+# Get a copy of the data
+cp --recursive \
+  /shared/data/{raw_reads,references,misc} \
+  ./
+
+# Have a look at what files we'd provided
+tree raw_reads references misc
+\end{lstlisting}
+
+%------------------------
+\subsection{Implementing BWA Indexing}
+%------------------------
+
+We have provided an out-of-the-box \texttt{Snakefile} capable of indexing the provided reference sequence, together with comments. Lets
+have a bit of a play before we get around to actually running the workflow.
+
+\begin{lstlisting}
+less Snakefile
+
+# All these commands have the same effect
+snakemake --dryrun bwa_index
+snakemake --dryrun all
+snakemake --dryrun
+\end{lstlisting}
+
+
+The effect \texttt{--dryrun} is to simply show you what ``would'' be run, without actually running it. It's useful to ensure you're going to get
+what you though, especially as your worflows get larger and more interconnected.
+
+Another useful feature is to generate a directed acyclic graph (DAG) of the jobs which comprise the workflow and how they are linked together. Although
+for this workflow is not yet that impressive, but we'll have a look at how we generate the DAG:
+
+\begin{lstlisting}
+snakemake \
+  --dag \
+| dot -Tpdf \
+> dag1.pdf
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/dag1.pdf}
+\caption{DAG of jobs showing \texttt{bwa\_index} job dependant on the \texttt{all} pseudo-rule.}
+\label{fig:dag1}
+\end{figure}
+
+%------------------------
+\subsection{Implementing FastQC}
+%------------------------
+
+Lets add a rule for performing FastQC on our input files. Looking at the \texttt{analysis.sh} file we see the following command
+is executed for each \texttt{SAMPLE} while interating over the \texttt{SAMPLES} array:
+
+\begin{lstlisting}
+fastqc --threads 1 \
+  raw_reads/${SAMPLE}_R1.fastq.gz \
+  raw_reads/${SAMPLE}_R2.fastq.gz
+\end{lstlisting}
+
+This command can be converted into a Snakemake \texttt{rule} by adding the following rule to the \texttt{Snakefile}:
+
+\begin{lstlisting}
+rule fastqc:
+	input:
+		r1 = "raw_reads/{SAMPLE}_R1.fastq.gz",
+		r2 = "raw_reads/{SAMPLE}_R2.fastq.gz",
+	output:
+		zip  = [ "raw_reads/{SAMPLE}_R1_fastqc.zip", "raw_reads/{SAMPLE}_R2_fastqc.zip" ],
+		html = [ "raw_reads/{SAMPLE}_R1_fastqc.html", "raw_reads/{SAMPLE}_R2_fastqc.html" ],
+	shell:
+		"""
+		fastqc --threads 1 {input.r1} {input.r2}
+		"""
+\end{lstlisting}
+
+Now we can run Snakemake and request a ``target'' file which matches an output files defined by the above \texttt{fastq} rule:
+
+\begin{lstlisting}
+snakemake --dryrun raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastqc.html
+\end{lstlisting}
+
+There are a few improvements we can make to this rule:
+
+\begin{itemize}
+  \item We don't need to process both the R1 and R2 read files with the same FastQC job. We can operate on one read file at a time.
+        By doing this, Snakemake will be able to execute the FastQC job for each file in parallel.
+  \item We want a convienient way of generating FastQC outputs for ALL samples without typing them all at the command line.
+\end{itemize}
+
+%........................
+\subsubsection{Improving FastQC Parallelisation}
+%........................
+
+Add the following new rule to your \texttt{Snakefile}:
+
+\begin{lstlisting}
+rule fastqc_single_input:
+	input:
+		"raw_reads/{prefix}.fastq.gz",
+	output:
+		zip  = "raw_reads/{prefix}_fastqc.zip",
+		html = "raw_reads/{prefix}_fastqc.html",
+	shell:
+		"""
+		fastqc --threads 1 {input}
+		"""
+\end{lstlisting}
+
+Now run the same Snakemake dryrun command as before:
+
+\begin{lstlisting}
+snakemake --dryrun raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastqc.html
+\end{lstlisting}
+
+\begin{questions}
+
+Why did Snakemake complain about an \texttt{AmbiguousRuleException}?
+
+\begin{answer}
+
+We now have two rules (\texttt{fastqc} and \texttt{fastqc\_single\_input}) capable of generating the two files we
+requested and it doesn't know which it should use.
+
+\end{answer}
+
+How could we fix it? Hint: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#handling-ambiguous-rules}
+
+\begin{answer}
+
+Three options:
+
+\begin{itemize}
+  \item Delete the old \texttt{fastqc} as the \texttt{fastqc\_single\_input} is superior
+  \item Use \texttt{ruleorder} to define precedence
+  \item Use \texttt{--allow-ambiguity} so Snakemake uses the first rule encountered
+\end{itemize}
+
+\end{answer}
+
+\end{questions}
+
+Go ahead and delete the \texttt{fastqc} rule in favour of the \texttt{fastqc\_single\_input} rule. Do the same dryrun
+and see how many jobs Snakemake would run in order to create those files:
+
+\begin{lstlisting}
+snakemake --dryrun raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastqc.html
+\end{lstlisting}
+
+%........................
+\subsubsection{Pseudo-Rules}
+%........................
+
+We can use ``pseudo-rules'' to define a list of target filenames for creation when we use the rule name as a ``target''. Pseudo-rules consist of just an \texttt{input} directive:
+
+\begin{lstlisting}
+rule all:
+	input:
+		"raw_reads/ACBarrie_R1_fastqc.html",
+		"raw_reads/ACBarrie_R2_fastqc.html",
+\end{lstlisting}
+
+By convention, the first pseudo-rule in the \texttt{Snakefile} is called \texttt{all} and specifies all the output filenames of the workflow. This now
+means we can execute a workflow in any of the following ways:
+
+\begin{lstlisting}
+# Not specifying a target will result in Snakemake executing the
+# first rule in the Snakefile ("all" in this case)
+snakemake --dryrun
+
+# Explicityly request the "all" rule
+snakemake --dryrun all
+\end{lstlisting}
+
+When workflows get larger and the lists of filenames get bigger, specifying long lists of filenames in pseudo-rules can start to feel cumbersome.
+Since Snakemake syntax is an extension of Python, we can start to use some Python data structures and functions to help.
+
+Add the following Python array of sample names (with most commented out for now) at the top of the file:
+
+\begin{lstlisting}
+SAMPLES = [
+  "ACBarrie",
+  "Alsen",
+#  "Baxter",
+#  "Chara",
+#  "Drysdale",
+#  "Excalibur",
+#  "Gladius",
+#  "H45",
+#  "Kukri",
+#  "Pastor",
+#  "RAC875",
+#  "Volcanii",
+#  "Westonia",
+#  "Wyalkatchem",
+#  "Xiaoyan",
+#  "Yitpi",
+]
+\end{lstlisting}
+
+Add FastQC output files for all samples in the \texttt{SAMPLES} array, as well as both read files, as new targets to the existing \texttt{all} rule. We'll make use of the \texttt{expand()}
+function to simplify things somewhat. The resulting \texttt{all} pseudo-rule should look like this:
+
+\begin{lstlisting}
+rule all:
+	input:
+		expand("references/reference.fasta.gz.{ext}", ext=['amb', 'ann', 'bwt', 'pac', 'sa']),
+		expand("raw_reads/{SAMPLE}_{read}_fastqc.html", SAMPLE=SAMPLES, read=['R1', 'R2']),
+\end{lstlisting}
+
+Lets take a look at what jobs would be run if we run the whole workflow. Remember, the following commands are equivilent:
+
+\begin{lstlisting}
+# Explicitly run the "all" pseudo-rule
+snakemake --dryrun all
+
+# Run the first rule in the Snakefile. This should be the "all" rule by convention
+snakemake --dryrun
+\end{lstlisting}
+
+Lets look at the DAG for the workflow:
+
+\begin{lstlisting}
+snakemake \
+  --dag \
+| dot -Tpdf \
+> dag2.pdf
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/dag2.pdf}
+\caption{DAG of jobs showing \texttt{bwa\_index} and several \texttt{fastqc\_single\_input} job dependant on the \texttt{all} pseudo-rule.}
+\label{fig:dag2}
+\end{figure}
+
+
+%........................
+\subsubsection{Executing the Workflow on Slurm}
+%........................
+
+Up until now, we've just been playing around with \texttt{--dryrun}, so lets move on and start executing the workflow on the Slurm cluster!
+
+Remember, we need to use the Slurm profile we've provided you with so Snakemake knows how to communicate with Slurm. In addition, we're
+also going to execute the jobs within a singularity container which has the tools we need already installed inside it.
+
+\begin{lstlisting}
+# Make sure Singularity is available
+module load \
+  singularity-3.2.1-gcc-5.4.0-tn5ndnb
+
+# Execute the workflow
+snakemake \
+  --profile profiles/slurm \
+  --use-singularity
+\end{lstlisting}
+
+If you're quick you might see the progress of your jobs in the Slurm queue but executing this in another window:
+
+\begin{lstlisting}
+sq
+\end{lstlisting}
+
+%------------------------
+\subsection{Implementing Trimmomatic}
+%------------------------
+
+We've gone through implementing the FastQC command as a Snakemake rule and demonstrated the core concepts of
+Snakemake along the way. We'll go through implementing one more command as a Snakemake rule before you go
+off and try one on your own!
+
+\begin{lstlisting}
+rule trimmomatic:
+	input:
+		r1          = "raw_reads/{SAMPLE}_R1.fastq.gz",
+		r2          = "raw_reads/{SAMPLE}_R2.fastq.gz",
+		adapters    = "misc/trimmomatic_adapters/TruSeq3-PE.fa"
+	output:
+		r1          = "qc_reads/{SAMPLE}_R1.fastq.gz",
+		r2          = "qc_reads/{SAMPLE}_R2.fastq.gz",
+		r1_unpaired = "qc_reads/{SAMPLE}_R1.unpaired.fastq.gz",
+		r2_unpaired = "qc_reads/{SAMPLE}_R2.unpaired.fastq.gz",
+	shell:
+		"""
+		trimmomatic PE \
+		  -threads 1 \
+		  {input.r1} {input.r2} \
+		  {output.r1} {output.r1_unpaired} \
+		  {output.r2} {output.r2_unpaired} \
+		  ILLUMINACLIP:{input.adapters}:2:30:10:3:true \
+		  LEADING:2 \
+		  TRAILING:2 \
+		  SLIDINGWINDOW:4:15 \
+		  MINLEN:36
+		"""
+\end{lstlisting}
+
+Next, we need to add the trimmomatic output files to our \texttt{all} pseudo-rule to make it convenient to create them. Your \texttt{all}
+pseudo-rule should look like this:
+
+\begin{lstlisting}
+rule all:
+	input:
+		expand("references/reference.fasta.gz.{ext}", ext=['amb', 'ann', 'bwt', 'pac', 'sa']),
+		expand("raw_reads/{SAMPLE}_{read}_fastqc.html", SAMPLE=SAMPLES, read=['R1', 'R2']),
+		expand("qc_reads/{SAMPLE}_{read}.fastq.gz", SAMPLE=SAMPLES, read=['R1', 'R2']),
+\end{lstlisting}
 
 
 
 
 
-To provide you with the ability to submit jobs etc to the slurm queue, we've provided a Snakemake template repository for you. That way,
-you can concentrate on implementing a workflow. 
+
+
+
+
+
+
+
+\subsection{Legacy Stuff From Here Onwards}
 
 \begin{lstlisting}
 # Ensure a working directory exists and move into it
