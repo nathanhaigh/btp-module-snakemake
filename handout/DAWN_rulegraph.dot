@@ -1,0 +1,50 @@
+digraph snakemake_dag {
+    graph[bgcolor=white, margin=0];
+    node[shape=box, style=rounded, fontname=sans,                 fontsize=10, penwidth=2];
+    edge[penwidth=2, color=grey];
+	0[label = "vcf_density_bigwig", color = "0.20 0.6 0.85", style="rounded"];
+	1[label = "gff_density_bigwig", color = "0.22 0.6 0.85", style="rounded"];
+	2[label = "make_chr_windows", color = "0.23 0.6 0.85", style="rounded"];
+	3[label = "bam_to_bigwig", color = "0.02 0.6 0.85", style="rounded"];
+	4[label = "index_vcf", color = "0.33 0.6 0.85", style="rounded"];
+	5[label = "tabix_index_gff3_csi", color = "0.55 0.6 0.85", style="rounded"];
+	6[label = "csi_index_bam", color = "0.07 0.6 0.85", style="rounded"];
+	7[label = "create_fasta_fai", color = "0.27 0.6 0.85", style="rounded"];
+	8[label = "merge_replicates_for_sample", color = "0.38 0.6 0.85", style="rounded"];
+	9[label = "all", color = "0.50 0.6 0.85", style="rounded"];
+	10[label = "fasta_gaps_as_GFF3", color = "0.48 0.6 0.85", style="rounded"];
+	11[label = "split_bam_by_range", color = "0.35 0.6 0.85", style="rounded"];
+	12[label = "make_chrom_size", color = "0.62 0.6 0.85", style="rounded"];
+	13[label = "uncompress_fasta", color = "0.43 0.6 0.85", style="rounded"];
+	14[label = "call_variants_bcftools", color = "0.17 0.6 0.85", style="rounded"];
+	12 -> 0
+	2 -> 0
+	14 -> 0
+	10 -> 1
+	2 -> 1
+	12 -> 1
+	12 -> 2
+	13 -> 3
+	12 -> 3
+	11 -> 3
+	14 -> 4
+	10 -> 5
+	8 -> 6
+	11 -> 6
+	13 -> 7
+	0 -> 9
+	1 -> 9
+	3 -> 9
+	5 -> 9
+	6 -> 9
+	10 -> 9
+	11 -> 9
+	4 -> 9
+	14 -> 9
+	6 -> 11
+	8 -> 11
+	7 -> 12
+	13 -> 14
+	11 -> 14
+	7 -> 14
+}            

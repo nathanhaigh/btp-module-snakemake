@@ -684,7 +684,7 @@ snakemake \
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{handout/dag2.pdf}
-\caption{DAG of jobs showing \texttt{bwa\_index} and several \texttt{fastqc\_single\_input} job dependant on the \texttt{all} pseudo-rule.}
+\caption{DAG of jobs showing \texttt{bwa\_index} and several \texttt{fastqc} job dependant on the \texttt{all} pseudo-rule.}
 \label{fig:dag2}
 \end{figure}
 
@@ -829,7 +829,7 @@ If you hard-coded it, what would the rule look like?
 \begin{lstlisting}
   shell:
     """
-    bwa mem -t 1 \
+    bwa mem -t {threads} \
       references/reference.fasta.gz \
       {input.r1} {input.r2} \
     | samtools view -b \
@@ -857,7 +857,7 @@ Moving the hard-coded path out of the \texttt{shell} directive into the \texttt{
     prefix = "references/reference.fasta.gz",
   shell:
     """
-    bwa mem -t 1 \
+    bwa mem -t {threads} \
       {params.prefix} \
       {input.r1} {input.r2} \
     | samtools view -b \
@@ -882,19 +882,21 @@ corresponding to the last file extension. You will probably need to do some read
 \begin{answer}
 
 \begin{lstlisting}
-  input:
-    reference = expand("references/reference.fasta.gz.{ext}", ext=["amb","ann","bwt","pac","sa"]),
-  ...
-  params:
-    prefix = lambda wildcards, input: input["reference"][0][:-4],
-  shell:
-    """
-    bwa mem -t 1 \
-      {params.prefix} \
-      {input.r1} {input.r2} \
-    | samtools view -b \
-    > {output}
-    """
+	input:
+		reference = expand("references/reference.fasta.gz.{ext}",
+			ext=["amb","ann","bwt","pac","sa"]
+		),
+	...
+	params:
+		prefix = lambda wildcards, input: input["reference"][0][:-4],
+	shell:
+		"""
+		bwa mem -t {threads} \
+		  {params.prefix} \
+		  {input.r1} {input.r2} \
+		| samtools view -b \
+		> {output}
+		"""
 \end{lstlisting}
 
 \end{answer}
@@ -905,19 +907,21 @@ Now add the BAM files corresponding to the all the samples in the \texttt{SAMPLE
 \begin{answer}
 
 \begin{lstlisting}
-  input:
-    reference = expand("references/reference.fasta.gz.{ext}", ext=["amb","ann","bwt","pac","sa"]),
-  ...
-  params:
-    prefix = lambda wildcards, input: input["reference"][0][:-4],
-  shell:
-    """
-    bwa mem -t 1 \
-      {params.prefix} \
-      {input.r1} {input.r2} \
-    | samtools view -b \
-    > {output}
-    """
+	input:
+		reference = expand("references/reference.fasta.gz.{ext}",
+		ext=["amb","ann","bwt","pac","sa"]
+	),
+	...
+	params:
+		prefix = lambda wildcards, input: input["reference"][0][:-4],
+	shell:
+		"""
+		bwa mem -t {threads} \
+		  {params.prefix} \
+		  {input.r1} {input.r2} \
+		| samtools view -b \
+		> {output}
+		"""
 \end{lstlisting}
 
 \end{answer}
@@ -959,10 +963,10 @@ at some other features of Snakemake:
 
 \begin{lstlisting}
 # Manually uncomment the samples or use this sed command
-sed -i 's/^#  "/  "/' Snakefile
+sed -i 's/^# \{2\}"/  "/' Snakefile
 \end{lstlisting}
 
-With so many more samples, the DAG becomes next to useless:
+With so many more samples, the DAG becomes next to useless with dot's default layout algorithm:
 
 \begin{lstlisting}
 # Generate a DAG
@@ -1006,14 +1010,20 @@ snakemake \
   --use-singularity
 \end{lstlisting}
 
+In a different terminal, have a look at your jobs in the queue:
+
+\begin{lstlisting}
+sq
+\end{lstlisting}
+
 \begin{questions}
 
-How many \texttt{fastqc\_single\_input} and total number of jobs are run as part of the whole workflow? Hint: try using \texttt{--forceall} in combination
+How many \texttt{fastqc} and total number of jobs are run as part of the whole workflow? Hint: try using \texttt{--forceall} in combination
 with \texttt{--dryrun}.
 
 \begin{answer}
 
-\texttt{fastqc\_single\_input}: 32
+\texttt{fastqc}: 32
 
 Total: 66
 
@@ -1045,6 +1055,28 @@ snakemake \
 
 \end{questions}
 
+%------------------------
+\subsection{Large Workflows}
+%------------------------
+
+A workflow I have developed is capable of mapping RNA-Seq, WGS, exome capture and Iso-Seq data to the wheat genome. In addition, downstream variant analysis and creation
+of various tracks for JBrowse (e.g. BigWig) are possible. Much of the workflow involves broking the tasks down so each of the chromosomes is proccessed independantly, and
+in parallel by the workflow. All up, there are more than 10,000 individual jobs representing 14 rules. DAG's of this size are best opened and layed out by Gephi using the
+\texttt{ForceAtlas 2} algorithm:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/DAWN_DAG.png}
+\caption{Large DAG, from the DAWN workflow, consisting of 10,587 nodes/jobs and 32,353 edges/dependancies. Layed out using \texttt{ForceAtlas 2} algorithm of Gephi}
+\label{fig:dawn_dag}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{handout/DAWN_rulegraph.pdf}
+\caption{Rulegraph, from the DAWN workflow.}
+\label{fig:dawn_rulegraph}
+\end{figure}
 
 
 %
@@ -1055,43 +1087,10 @@ snakemake \
 
 
 %========================
+\newpage
 \section{Snakemake Troubleshooting}
 \label{sec:snake_trouble}
 %========================
-
-%------------------------
-\subsection{Snakemake Install}
-%------------------------
-
-If you have a broken or incomplete snakemake installation, try the following steps to fix things:
-
-\begin{lstlisting}
-# deactivate the snakemake conda environment if it is already active
-conda deactivate
-
-# Delete the snakemake conda environment
-conda env remove --name snakemake
-\end{lstlisting}
-
-Now try reinstalling snakemake.
-
-%------------------------
-\subsection{Conda Software Environment Setup}
-%------------------------
-
-If your job failed or timed out, you will need to re-run conda software environment setup job again. However, you may first need to release the
-Snakemake lock which protects you from running multiple instances of the same workflow at the same time:
-
-\begin{lstlisting}
-snakemake \
-  --unlock
-\end{lstlisting}
-
-To ensure Snakemake starts with a clean slate, delete the ``hidden'' \texttt{.snakemake} directory:
-
-\begin{lstlisting}
-rm -rf .snakemake
-\end{lstlisting}
 
 %------------------------
 \subsection{Getting Going After a Disconnect}
@@ -1105,10 +1104,12 @@ module load \
   miniconda3-4.6.14-gcc-5.4.0-kkzv7zk \
   singularity-3.2.1-gcc-5.4.0-tn5ndnb
 
-# Activate the snakemake conda environment and integrate shell autocompletion into bash
+# Activate the snakemake conda environment and
+# integrate shell autocompletion into bash
 conda activate snakemake
 complete -o bashdefault -C snakemake-bash-completion snakemake
 
-# Move to the correct directory location
-cd /shared/${USER}/snakemake-tutorial
+# Move to the correct directory location, most
+# likely here:
+cd /shared/${USER}/snakemake/tutorial
 \end{lstlisting}
