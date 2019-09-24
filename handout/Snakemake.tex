@@ -39,7 +39,7 @@ After completing this module the trainee should be able to:
   \item Install Snakemake in a conda environment
   \item Execute a Snakemake workflow
   \item Use the provided ``profile'' to execute jobs on a compute cluster
-  \item Write simple Snakemake rules capable of generating some output(s) by executing some code which perates on some input(s)
+  \item Write simple Snakemake rules capable of generating some output(s) by executing some code which operates on some input(s)
 \end{itemize}
 % END KLOs
 
@@ -361,6 +361,12 @@ snakemake \
 tree
 \end{lstlisting}
 
+\begin{warning}
+
+There are examples of community developed profiles, available for other compute back-ends, see: \url{https://github.com/Snakemake-Profiles/doc}.
+
+\end{warning}
+
 %========================
 \section{Reimplementing a Workflow in Snakemake}
 %========================
@@ -511,6 +517,14 @@ snakemake \
 | dot -Tpdf \
 > dag1.pdf
 \end{lstlisting}
+
+\begin{warning}
+
+If you want to view the \texttt{dag1.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
+Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
+that shown in Figure ~\ref{fig:dag1}.
+
+\end{warning}
 
 \begin{figure}[H]
 \centering
@@ -685,6 +699,14 @@ snakemake \
 | dot -Tpdf \
 > dag2.pdf
 \end{lstlisting}
+
+\begin{warning}
+
+If you want to view the \texttt{dag2.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
+Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
+that shown in Figure ~\ref{fig:dag2}.
+
+\end{warning}
 
 \begin{figure}[H]
 \centering
@@ -972,6 +994,14 @@ snakemake \
 > dag3.pdf
 \end{lstlisting}
 
+\begin{warning}
+
+If you want to view the \texttt{dag3.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
+Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
+that shown in Figure ~\ref{fig:dag3}.
+
+\end{warning}
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{handout/dag3.pdf}
@@ -1001,6 +1031,14 @@ snakemake \
 > dag4.pdf
 \end{lstlisting}
 
+\begin{warning}
+
+If you want to view the \texttt{dag4.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
+Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
+that shown in Figure ~\ref{fig:dag4}.
+
+\end{warning}
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{handout/dag4.pdf}
@@ -1018,6 +1056,14 @@ snakemake \
 | dot -Tpdf \
 > rulegraph.pdf
 \end{lstlisting}
+
+\begin{warning}
+
+If you want to view the \texttt{rulegraph.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
+Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The rulegraph generated should look like
+that shown in Figure ~\ref{fig:rulegraph}.
+
+\end{warning}
 
 \begin{figure}[H]
 \centering
