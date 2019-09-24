@@ -226,6 +226,12 @@ cd /shared/${USER}/snakemake/hello
 
 Create a file called \texttt{Snakefile} and add the following content:
 
+\begin{warning}
+
+Like Python, indentation in a \texttt{Snakefile} matters! For consistency, I'd recommend tab indentations.
+
+\end{warning}
+
 \begin{lstlisting}
 rule hello_world:
   output:
@@ -365,7 +371,6 @@ to be performed. For example, someone might have written a script for performing
 \begin{itemize}
   \item Run FastQC across all the raw read files
   \item Adapter, quality, and read length filtering using Trimmomatic
-  \item Aggregating FastQC reports from the raw reads using MultiQC
   \item Index the reference FASTA file
   \item Perform a \texttt{bwa-mem} read alignment
 \end{itemize}
@@ -847,7 +852,7 @@ Hard-coding the path is simple, but not ideal. What if you changed the name of t
 different project? You would have to modify the paths in multiple places, once in the \texttt{input} directive and once in the
 \texttt{shell} directive.
 
-Moving the hard-coded path out of the \texttt{shell} directive into the \texttt{params} directive
+Move the hard-coded path out of the \texttt{shell} directive into the \texttt{params} directive
 (see: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#non-file-parameters-for-rules}).
 
 \begin{answer}
@@ -901,15 +906,35 @@ corresponding to the last file extension. You will probably need to do some read
 
 \end{answer}
 
-Now add the BAM files corresponding to the all the samples in the \texttt{SAMPLES} list, that you want the BWA-MEM rule to produce, to the
+\end{questions}
+
+\begin{questions}
+
+Now add the BAM files corresponding to all the samples in the \texttt{SAMPLES} list, that you want the BWA-MEM rule to produce, to the
 \texttt{all} pseudo-rule.
 
 \begin{answer}
 
 \begin{lstlisting}
+	rule all:
+		input:
+			expand("references/reference.fasta.gz.{ext}",
+				ext=['amb', 'ann', 'bwt', 'pac', 'sa']
+			),
+			expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
+				SAMPLE=SAMPLES,
+				read=['R1', 'R2']
+			),
+			expand("qc_reads/{SAMPLE}_{read}.fastq.gz",
+				SAMPLE=SAMPLES,
+				read=['R1', 'R2']
+			),
+			expand("mapped/{SAMPLE}.bam",
+				SAMPLE=SAMPLES,
+			),
 	input:
 		reference = expand("references/reference.fasta.gz.{ext}",
-		ext=["amb","ann","bwt","pac","sa"]
+			ext=["amb","ann","bwt","pac","sa"]
 	),
 	...
 	params:
