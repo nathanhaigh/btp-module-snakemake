@@ -445,8 +445,8 @@ Lets have a bit of a play before we get around to actually running the workflow.
 less Snakefile
 
 # These commands have the same effect
-snakemake --dryrun all
-snakemake --dryrun
+snakemake --dry-run all
+snakemake --dry-run
 \end{lstlisting}
 
 
@@ -455,7 +455,7 @@ snakemake --dryrun
 Why doesn't this work:
 
 \begin{lstlisting}
-snakemake --dryrun bwa_index
+snakemake --dry-run bwa_index
 \end{lstlisting}
 
 \begin{answer}
@@ -488,7 +488,7 @@ This is how we are able to define dependencies between rules.
 \end{questions}
 
 
-The effect \texttt{--dryrun} is to simply show you what ``would'' be run, without actually running it.
+The effect \texttt{--dry-run} is to simply show you what ``would'' be run, without actually running it.
 It's useful to ensure you're going to get what you though, especially as your worflows get larger and more interconnected.
 
 Another useful feature is to generate a directed acyclic graph (DAG) of the jobs which comprise the workflow and how they are linked together.
@@ -579,10 +579,10 @@ rule fastqc:
     """
 \end{lstlisting}
 
-Now run the same Snakemake dryrun command as before:
+Now run the same Snakemake dry-run command as before:
 
 \begin{lstlisting}
-snakemake --dryrun raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastqc.html
+snakemake --dry-run raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastqc.html
 \end{lstlisting}
 
 %........................
@@ -617,10 +617,10 @@ This now means we can execute a workflow in any of the following ways:
 \begin{lstlisting}
 # Not specifying a target will result in Snakemake executing the
 # first rule in the Snakefile ("all" in this case)
-snakemake --dryrun
+snakemake --dry-run
 
 # Explicityly request the "all" rule
-snakemake --dryrun all
+snakemake --dry-run all
 \end{lstlisting}
 
 When workflows get larger and the lists of filenames get bigger, specifying long lists of filenames in pseudo-rules can start to feel cumbersome.
@@ -670,11 +670,11 @@ Remember, the following commands are equivilent:
 
 \begin{lstlisting}
 # Explicitly run the "all" pseudo-rule
-snakemake --dryrun all
+snakemake --dry-run all
 
 # Run the first rule in the Snakefile. This should be the
 # "all" rule by convention
-snakemake --dryrun
+snakemake --dry-run
 \end{lstlisting}
 
 Lets look at the DAG for the workflow:
@@ -705,7 +705,7 @@ The DAG generated should look like that shown in Figure ~\ref{fig:dag2}.
 \subsubsection{Executing the Workflow on Slurm}
 %........................
 
-Up until now, we've just been playing around with \texttt{--dryrun}, so lets move on and start executing the workflow on the Slurm cluster!
+Up until now, we've just been playing around with \texttt{--dry-run}, so lets move on and start executing the workflow on the Slurm cluster!
 Remember, we need to use the Slurm profile we've provided you with so Snakemake knows how to communicate with Slurm.
 
 In addition, we're also going to execute the jobs within a singularity container which has the tools we need already installed inside it.
@@ -788,12 +788,12 @@ rule all:
 \end{lstlisting}
 
 We won't run the workflow in a piecemeal fashion, we'll save all our jobs for running a bit later.
-So for now, lets look at the dryrun again:
+So for now, lets look at the dry-run again:
 
 \begin{lstlisting}
 # Run the first rule in the Snakefile. This should be the
 # "all" rule by convention
-snakemake --dryrun
+snakemake --dry-run
 \end{lstlisting}
 
 %------------------------
@@ -1070,7 +1070,7 @@ sq
 \begin{questions}
 
 How many \texttt{fastqc} and total number of jobs are run as part of the whole workflow?
-Hint: try using \texttt{--forceall} in combination with \texttt{--dryrun}.
+Hint: try using \texttt{--forceall} in combination with \texttt{--dry-run}.
 
 \begin{answer}
 
@@ -1080,13 +1080,13 @@ Total: 66
 
 \end{answer}
 
-Using the Snakemake help, which command line argument can be used to get Snakemake to print the shell commands associated with each job during a \texttt{dryrun}?
+Using the Snakemake help, which command line argument can be used to get Snakemake to print the shell commands associated with each job during a \texttt{dry-run}?
 
 \begin{answer}
 
 \begin{lstlisting}
 snakemake \
-  --dryrun \
+  --dry-run \
   --printshellcmds \
   --forceall
 \end{lstlisting}
