@@ -187,8 +187,7 @@ snakemake --version
 
 \begin{bonus}
 
-While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake}
-within this conda environment if there is a new version available.
+While waiting for others to catch up, why not have a look into how you would go about updating \texttt{Snakemake} within this conda environment if there is a new version available.
 
 \begin{answer}
 \begin{lstlisting}
@@ -204,8 +203,7 @@ conda update \
 \section{Your First Snakemake Workflow}
 %========================
 
-To get started with Snakemake, all you need to do is create a \texttt{Snakefile} (note the capitalisation) containing a rule
-which specifies how to create an output file.
+To get started with Snakemake, all you need to do is create a \texttt{Snakefile} (note the capitalisation) containing a rule which specifies how to create an output file.
 
 Setup a working directory for this task:
 
@@ -261,17 +259,18 @@ Snakemake found the requested output file was already there so decided not to re
 \section{Generalising Rules with Wildcards}
 %========================
 
-The original \texttt{hello\_world} rule wasn't very flexible. We couldn't say ``Hello, World!'' in Spanish, Polish
-or French. However, we can generalise the rule using ``wildcards'' (\url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards}):
+The original \texttt{hello\_world} rule wasn't very flexible.
+We couldn't say ``Hello, World!'' in Spanish, Polish or French.
+However, we can generalise the rule using ``wildcards'' (\url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards}):
 
 \begin{lstlisting}
 rule hello_world:
-	output:
-		"{cheer}/{world}.txt",
-	shell:
-		"""
-		echo "{wildcards.cheer}, {wildcards.world}!" > {output}
-		"""
+  output:
+    "{cheer}/{world}.txt",
+  shell:
+    """
+    echo "{wildcards.cheer}, {wildcards.world}!" > {output}
+    """
 \end{lstlisting}
 
 Now we can use whatever language we want:
@@ -299,13 +298,11 @@ cat */*.txt
 \section{Submitting Jobs to Slurm}
 %========================
 
-By default, Snakemake executes jobs on the same computer on which it is running. For Snakemake to be able to
-submit jobs to a cluster resource management/queuing system, such as Slurm, we can use a ``profile'' which
-convieniently contains scripts for job submission and monitoring as well as setting some additional Snakemake
-command line arguments so it can ``talk'' to a cluster backend.
+By default, Snakemake executes jobs on the same computer on which it is running.
+For Snakemake to be able to submit jobs to a cluster resource management/queuing system, such as Slurm, we can use a ``profile''.
+A profile is really just a way to group scripts required for Snakemake to ``talk'' to a cluster backend for things such as job submission and monitoring.
 
-To avoid having to delve into implementing our own ``profile'' for use with our Slurm cluster, we have created
-a Slurm profile ready for you to use. So lets grab it:
+To avoid having to delve into implementing our own ``profile'' for use with our Slurm cluster, we have created a Slurm profile ready for you to use. So lets grab it:
 
 \begin{lstlisting}
 # Ensure a working directory exists and move into it
@@ -319,8 +316,8 @@ git clone https://github.com/UofABioinformaticsHub/snakemake_template ./
 git checkout hello
 \end{lstlisting}
 
-The \texttt{Snakefile} in this branch of the repository is the same ``Hello, World!'' example you created above,
-with wildcards. Lets see how we use the provided ``profile'' to get Snakemake to submit jobs to Slurm:
+The \texttt{Snakefile} in this branch of the repository is the same ``Hello, World!'' example you created above, with wildcards.
+Lets see how we use the provided ``profile'' to get Snakemake to submit jobs to Slurm:
 
 \begin{lstlisting}
 snakemake \
@@ -331,10 +328,8 @@ snakemake \
 tree
 \end{lstlisting}
 
-If the \texttt{STDOUT} and \texttt{STDERR} of the command(s) in a rule are not explicitly sent to a file, then they will
-end up in Slurm's log file for a particular job which is normally something like \texttt{slurm-<job\_id>.out}. This isn't
-that helpful for debugging purposes, so the provided profile changes this to \texttt{logs/<rule\_name>/<wildcards>.out}
-e.g. \texttt{logs/hello\_world/cheer=Ciao,world=Mondo.out}. See:
+If the \texttt{STDOUT} and \texttt{STDERR} of the command(s) in a rule are not explicitly sent to a file, then they will end up in Slurm's log file for a particular job which is normally something like \texttt{slurm-<job\_id>.out}.
+This isn't that helpful for debugging purposes, so the provided profile changes this to \texttt{logs/<rule\_name>/<wildcards>.out} e.g. \texttt{logs/hello\_world/cheer=Ciao,world=Mondo.out}. See:
 
 \begin{lstlisting}
 tree logs/
@@ -361,8 +356,8 @@ There are examples of community developed profiles, available for other compute 
 \section{Reimplementing a Workflow in Snakemake}
 %========================
 
-A bioinformatic ``pipeline'' is commonly a single, monolithic bash script which performs all the tasks which need
-to be performed. For example, someone might have written a script for performing the following tasks:
+A bioinformatic ``pipeline'' is commonly a single, monolithic bash script which performs all the tasks which need to be performed.
+For example, someone might have written a script for performing the following tasks:
 
 \begin{itemize}
   \item Run FastQC across all the raw read files
@@ -371,11 +366,10 @@ to be performed. For example, someone might have written a script for performing
   \item Perform a \texttt{bwa-mem} read alignment
 \end{itemize}
 
-We will walk you through the steps of reimplementing the first few steps of the above script into a Snakemake workflow. Along the way,
-we will introduce the core concepts of Snakemake and then ask you to reimplement the \texttt{bwa-mem} step yourselves. For those
-working quickly, you will have the opportunity to reimplement the \texttt{multiqc} step. This will provide you with a foundation
-for you to be able to convert your own workflows into Snakemake rules and begin reaping the rewards of being able to run your analyses
-in Snakemake.
+We will walk you through the steps of reimplementing the first few steps of the above script into a Snakemake workflow.
+Along the way, we will introduce the core concepts of Snakemake and then ask you to reimplement the \texttt{bwa-mem} step yourselves.
+For those working quickly, you will have the opportunity to reimplement the \texttt{multiqc} step.
+This will provide you with a foundation for you to be able to convert your own workflows into Snakemake rules and begin reaping the rewards of being able to run your analyses in Snakemake.
 
 %------------------------
 \subsection{Getting the Code}
@@ -384,13 +378,15 @@ in Snakemake.
 We have the monolithic script available for you on the \texttt{walkthrough} branch, switch to it and have a look:
 
 \begin{lstlisting}
+# Checkout the walkthrough branch
 git checkout walkthrough
 
+# Have a look at the contents of the
+# monolithic analysis script
 less analysis.sh
 \end{lstlisting}
 
-While the author of such a script should be commended for their efforts in documenting their analysis using a script,
-it has several significant limitations:
+While the author of such a script should be commended for their efforts in documenting their analysis using a script, it has several significant limitations:
 
 \begin{description}[style=multiline,labelindent=0cm,align=left,leftmargin=0.5cm]
   \item[Not parallelised]\hfill\\
@@ -411,8 +407,7 @@ How might you modify the above script to:
   \item Include readgroup information at the \texttt{bwa-mem} step (\texttt{-b} argumanet)
 \end{itemize}
 
-How would you avoid rerunning commands which take a long time and already completed sucessfully
-on a previous run e.g. the reference index, \texttt{bwa-mem} etc?
+How would you avoid rerunning commands which take a long time and already completed sucessfully on a previous run e.g. the reference index, \texttt{bwa-mem} etc?
 
 \begin{answer}
 
@@ -427,17 +422,17 @@ Enter - workflow management systems like Snakemake or Nextflow.
 \subsection{Getting the Data}
 %------------------------
 
-We've provided you with some real data whole genome sequencing (WGS) data from wheat together with a small chunk of the wheat genome.
-The data set is small enough so each step in the analysis will take less than a couple of minutes to run. We have a copy of this data
-available locally to save on badnwidth, time and the possibility we are detected as a DDoS attack on some poor remote server!
+We've provided you with some real whole genome shotgun (WGS) sequencing data from wheat, together with a small chunk of the wheat genome.
+The data set is small enough so each step in the analysis will take less than a couple of minutes to run.
+We have a copy of this data available locally, so you just need to move it to the right location.
 
 \begin{lstlisting}
 # Get a copy of the data
-cp --recursive \
-  /shared/data/{raw_reads,references,misc} \
+mv \
+  /shared/${U}/walkthrough_data/{raw_reads,references,misc} \
   ./
 
-# Have a look at what files we'd provided
+# Have a look at the files we provided
 tree raw_reads references misc
 \end{lstlisting}
 
@@ -445,8 +440,8 @@ tree raw_reads references misc
 \subsection{Implementation of BWA Indexing}
 %------------------------
 
-We have provided an out-of-the-box \texttt{Snakefile} capable of indexing the provided reference sequence, together with comments. Lets
-have a bit of a play before we get around to actually running the workflow.
+We have provided an out-of-the-box \texttt{Snakefile} capable of indexing the provided reference sequence, together with comments.
+Lets have a bit of a play before we get around to actually running the workflow.
 
 \begin{lstlisting}
 less Snakefile
@@ -467,9 +462,8 @@ snakemake --dryrun bwa_index
 
 \begin{answer}
 
-Because the rule makes use of wildcards. Effectively, the wildcards are \texttt{NULL} values when
-we specify the rule to run. We need to specify the target filenames and they will get matched against
-the wildcards present in the defined \texttt{output}.
+Because the rule makes use of wildcards.
+Effectively, the wildcards are \texttt{NULL} values when we specify the rule to run. We need to specify the target filenames and they will get matched against the wildcards present in the defined \texttt{output}.
 
 \end{answer}
 
@@ -477,8 +471,9 @@ Do we have to specify all 5 of the BWA index files in the \texttt{all} pseudo-ru
 
 \begin{answer}
 
-No. Snakemake determines which rule needs to be run in order to create each of the 5 index files specified. Since all these files
-are created by the \texttt{bwa\_index} rule, snakemake knows it only needs to run that rule once in order to create all 5 files.
+No.
+Snakemake determines which rule needs to be run in order to create each of the 5 index files specified.
+Since all these files are created by the \texttt{bwa\_index} rule, snakemake knows it only needs to run that rule once in order to create all 5 files.
 We could easily have specified only one of the index files and this would have resulted in the same jobs being run.
 
 \end{answer}
@@ -487,19 +482,19 @@ Why do we have to specify all 5 index files as \texttt{output} of the \texttt{bw
 
 \begin{answer}
 
-Because we want Snakemake to keep track of which files get generated as part of the workflow. This is how we are able to define
-dependencies between rules.
+Because we want Snakemake to keep track of which files get generated as part of the workflow.
+This is how we are able to define dependencies between rules.
 
 \end{answer}
 
 \end{questions}
 
 
-The effect \texttt{--dryrun} is to simply show you what ``would'' be run, without actually running it. It's useful to ensure you're going to get
-what you though, especially as your worflows get larger and more interconnected.
+The effect \texttt{--dryrun} is to simply show you what ``would'' be run, without actually running it.
+It's useful to ensure you're going to get what you though, especially as your worflows get larger and more interconnected.
 
-Another useful feature is to generate a directed acyclic graph (DAG) of the jobs which comprise the workflow and how they are linked together. Although
-for this workflow is not yet that impressive, but we'll have a look at how we generate the DAG:
+Another useful feature is to generate a directed acyclic graph (DAG) of the jobs which comprise the workflow and how they are linked together.
+Although for this workflow is not yet that impressive, but we'll have a look at how we generate the DAG:
 
 \begin{lstlisting}
 snakemake \
@@ -510,9 +505,8 @@ snakemake \
 
 \begin{warning}
 
-If you want to view the \texttt{dag1.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
-Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
-that shown in Figure ~\ref{fig:dag1}.
+If you want to view the \texttt{dag1.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp}, Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar.
+The DAG generated should look like that shown in Figure ~\ref{fig:dag1}.
 
 \end{warning}
 
@@ -528,8 +522,8 @@ that shown in Figure ~\ref{fig:dag1}.
 \subsection{Implementing FastQC}
 %------------------------
 
-Lets add a rule for performing FastQC on our input files. Looking at the \texttt{analysis.sh} file we see the following command
-is executed for each \texttt{SAMPLE} while interating over the \texttt{SAMPLES} list:
+Lets add a rule for performing FastQC on our input files.
+Looking at the \texttt{analysis.sh} file we see the following command is executed for each \texttt{SAMPLE} while interating over the \texttt{SAMPLES} list:
 
 \begin{lstlisting}
 fastqc --threads 1 \
@@ -541,22 +535,22 @@ This command can be converted into a Snakemake \texttt{rule} by adding the follo
 
 \begin{lstlisting}
 rule fastqc:
-	input:
-		r1 = "raw_reads/{SAMPLE}_R1.fastq.gz",
-		r2 = "raw_reads/{SAMPLE}_R2.fastq.gz",
-	output:
-		zip  = [
-			"raw_reads/{SAMPLE}_R1_fastqc.zip",
-			"raw_reads/{SAMPLE}_R2_fastqc.zip",
-		],
-		html = [
-			"raw_reads/{SAMPLE}_R1_fastqc.html",
-			"raw_reads/{SAMPLE}_R2_fastqc.html",
-		],
-	shell:
-		"""
-		fastqc --threads 1 {input.r1} {input.r2}
-		"""
+  input:
+    r1 = "raw_reads/{SAMPLE}_R1.fastq.gz",
+    r2 = "raw_reads/{SAMPLE}_R2.fastq.gz",
+  output:
+    zip  = [
+      "raw_reads/{SAMPLE}_R1_fastqc.zip",
+      "raw_reads/{SAMPLE}_R2_fastqc.zip",
+    ],
+    html = [
+      "raw_reads/{SAMPLE}_R1_fastqc.html",
+      "raw_reads/{SAMPLE}_R2_fastqc.html",
+    ],
+  shell:
+    """
+    fastqc --threads 1 {input.r1} {input.r2}
+    """
 \end{lstlisting}
 
 %........................
@@ -566,7 +560,8 @@ rule fastqc:
 There are a few improvements we can make to the \texttt{fastqc} rule:
 
 \begin{itemize}
-  \item We don't need to process both the R1 and R2 read files with the same FastQC job. We can operate on one read file at a time.
+  \item We don't need to process both the R1 and R2 read files with the same FastQC job.
+	We can operate on one read file at a time.
         By doing this, Snakemake will be able to execute the FastQC job for each file in parallel.
   \item We want a convienient way of generating FastQC outputs for ALL samples without typing them all at the command line.
 \end{itemize}
@@ -575,15 +570,15 @@ Change the \texttt{fastqc} rule to the following:
 
 \begin{lstlisting}
 rule fastqc:
-	input:
-		"raw_reads/{prefix}.fastq.gz",
-	output:
-		zip  = "raw_reads/{prefix}_fastqc.zip",
-		html = "raw_reads/{prefix}_fastqc.html",
-	shell:
-		"""
-		fastqc --threads {threads} {input}
-		"""
+  input:
+    "raw_reads/{prefix}.fastq.gz",
+  output:
+    zip  = "raw_reads/{prefix}_fastqc.zip",
+    html = "raw_reads/{prefix}_fastqc.html",
+  shell:
+    """
+    fastqc --threads {threads} {input}
+    """
 \end{lstlisting}
 
 Now run the same Snakemake dryrun command as before:
@@ -596,9 +591,9 @@ snakemake --dryrun raw_reads/ACBarrie_R1_fastqc.html raw_reads/ACBarrie_R2_fastq
 \subsubsection{Rule-Specific Resource Specification}
 %........................
 
-The profile provided in this repository specifies default values for Slurm resources. However, it is possible to provide
-rule-specific overrides so that jobs can make use of more time, memory, cores etc. The `cluster-configs/default.yaml` file is where
-these settings can be modified.
+The profile provided in this repository specifies default values for Slurm resources.
+However, it is possible to provide rule-specific overrides so that jobs can make use of more time, memory, cores etc.
+The `cluster-configs/default.yaml` file is where these settings can be modified.
 
 \begin{lstlisting}
 less cluster-configs/default.yaml
@@ -608,17 +603,18 @@ less cluster-configs/default.yaml
 \subsubsection{Pseudo-Rules}
 %........................
 
-We can use ``pseudo-rules'' to define a list of target filenames for creation when we use the rule name as a ``target''. Pseudo-rules consist of just an \texttt{input} directive:
+We can use ``pseudo-rules'' to define a list of target filenames for creation when we use the rule name as a ``target''.
+Pseudo-rules consist of just an \texttt{input} directive:
 
 \begin{lstlisting}
 rule all:
-	input:
-		"raw_reads/ACBarrie_R1_fastqc.html",
-		"raw_reads/ACBarrie_R2_fastqc.html",
+  input:
+    "raw_reads/ACBarrie_R1_fastqc.html",
+    "raw_reads/ACBarrie_R2_fastqc.html",
 \end{lstlisting}
 
-By convention, the first pseudo-rule in the \texttt{Snakefile} is called \texttt{all} and specifies all the output filenames of the workflow. This now
-means we can execute a workflow in any of the following ways:
+By convention, the first pseudo-rule in the \texttt{Snakefile} is called \texttt{all} and specifies all the output filenames of the workflow.
+This now means we can execute a workflow in any of the following ways:
 
 \begin{lstlisting}
 # Not specifying a target will result in Snakemake executing the
@@ -655,22 +651,24 @@ SAMPLES = [
 ]
 \end{lstlisting}
 
-Add FastQC output files for all samples in the \texttt{SAMPLES} list, as well as both read files, as new targets to the existing \texttt{all} rule. We'll make use of the \texttt{expand()}
-function to simplify things somewhat. The resulting \texttt{all} pseudo-rule should look like this:
+Add FastQC output files for all samples in the \texttt{SAMPLES} list, as well as both read files, as new targets to the existing \texttt{all} rule.
+We'll make use of the \texttt{expand()} function to simplify things somewhat.
+The resulting \texttt{all} pseudo-rule should look like this:
 
 \begin{lstlisting}
 rule all:
-	input:
-		expand("references/reference.fasta.gz.{ext}",
-			ext=['amb', 'ann', 'bwt', 'pac', 'sa']
-		),
-		expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
-			SAMPLE=SAMPLES,
-			read=['R1', 'R2']
-		),
+  input:
+    expand("references/reference.fasta.gz.{ext}",
+      ext=['amb', 'ann', 'bwt', 'pac', 'sa']
+    ),
+    expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
+      SAMPLE=SAMPLES,
+      read=['R1', 'R2']
+    ),
 \end{lstlisting}
 
-Lets take a look at what jobs would be run if we run the whole workflow. Remember, the following commands are equivilent:
+Lets take a look at what jobs would be run if we run the whole workflow.
+Remember, the following commands are equivilent:
 
 \begin{lstlisting}
 # Explicitly run the "all" pseudo-rule
@@ -692,9 +690,8 @@ snakemake \
 
 \begin{warning}
 
-If you want to view the \texttt{dag2.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
-Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
-that shown in Figure ~\ref{fig:dag2}.
+If you want to view the \texttt{dag2.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp}, Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar.
+The DAG generated should look like that shown in Figure ~\ref{fig:dag2}.
 
 \end{warning}
 
@@ -749,50 +746,51 @@ and output files via \texttt{\{input.r1\}}, \texttt{\{output.r1\_unpaired\}} etc
 
 \begin{lstlisting}
 rule trimmomatic:
-	input:
-		r1          = "raw_reads/{SAMPLE}_R1.fastq.gz",
-		r2          = "raw_reads/{SAMPLE}_R2.fastq.gz",
-		adapters    = "misc/trimmomatic_adapters/TruSeq3-PE.fa"
-	output:
-		r1          = "qc_reads/{SAMPLE}_R1.fastq.gz",
-		r2          = "qc_reads/{SAMPLE}_R2.fastq.gz",
-		r1_unpaired = "qc_reads/{SAMPLE}_R1.unpaired.fastq.gz",
-		r2_unpaired = "qc_reads/{SAMPLE}_R2.unpaired.fastq.gz",
-	shell:
-		"""
-		trimmomatic PE \
-		  -threads {threads} \
-		  {input.r1} {input.r2} \
-		  {output.r1} {output.r1_unpaired} \
-		  {output.r2} {output.r2_unpaired} \
-		  ILLUMINACLIP:{input.adapters}:2:30:10:3:true \
-		  LEADING:2 \
-		  TRAILING:2 \
-		  SLIDINGWINDOW:4:15 \
-		  MINLEN:36
-		"""
+  input:
+    r1          = "raw_reads/{SAMPLE}_R1.fastq.gz",
+    r2          = "raw_reads/{SAMPLE}_R2.fastq.gz",
+    adapters    = "misc/trimmomatic_adapters/TruSeq3-PE.fa"
+  output:
+    r1          = "qc_reads/{SAMPLE}_R1.fastq.gz",
+    r2          = "qc_reads/{SAMPLE}_R2.fastq.gz",
+    r1_unpaired = "qc_reads/{SAMPLE}_R1.unpaired.fastq.gz",
+    r2_unpaired = "qc_reads/{SAMPLE}_R2.unpaired.fastq.gz",
+  shell:
+    """
+    trimmomatic PE \
+      -threads {threads} \
+      {input.r1} {input.r2} \
+      {output.r1} {output.r1_unpaired} \
+      {output.r2} {output.r2_unpaired} \
+      ILLUMINACLIP:{input.adapters}:2:30:10:3:true \
+      LEADING:2 \
+      TRAILING:2 \
+      SLIDINGWINDOW:4:15 \
+      MINLEN:36
+    """
 \end{lstlisting}
 
-Next, we need to add the trimmomatic output files to our \texttt{all} pseudo-rule to make it convenient to create them. Your \texttt{all}
-pseudo-rule should look like this:
+Next, we need to add the trimmomatic output files to our \texttt{all} pseudo-rule to make it convenient to create them.
+Your \texttt{all} pseudo-rule should look like this:
 
 \begin{lstlisting}
 rule all:
-	input:
-	expand("references/reference.fasta.gz.{ext}",
-		ext=['amb', 'ann', 'bwt', 'pac', 'sa']
-	),
-	expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
-		SAMPLE=SAMPLES,
-		read=['R1', 'R2']
-	),
-	expand("qc_reads/{SAMPLE}_{read}.fastq.gz",
-		SAMPLE=SAMPLES,
-		read=['R1', 'R2']
-	),
+  input:
+    expand("references/reference.fasta.gz.{ext}",
+      ext=['amb', 'ann', 'bwt', 'pac', 'sa']
+    ),
+    expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
+      SAMPLE=SAMPLES,
+      read=['R1', 'R2']
+    ),
+    expand("qc_reads/{SAMPLE}_{read}.fastq.gz",
+      SAMPLE=SAMPLES,
+      read=['R1', 'R2']
+    ),
 \end{lstlisting}
 
-We won't run the workflow in a piecemeal fashion, we'll save all our jobs for running a bit later. So for now, lets look at the dryrun again:
+We won't run the workflow in a piecemeal fashion, we'll save all our jobs for running a bit later.
+So for now, lets look at the dryrun again:
 
 \begin{lstlisting}
 # Run the first rule in the Snakefile. This should be the
@@ -804,8 +802,8 @@ snakemake --dryrun
 \subsection{Implementing BWA-MEM}
 %------------------------
 
-Now is your opportunity to put into practice what you have learnt from the above walk-thoughs of implementing
-FastQC and Trimmomatic commands. Your task is to implement the \texttt{bwa mem} command into a Snakemake rule.
+Now is your opportunity to put into practice what you have learnt from the above walk-thoughs of implementing FastQC and Trimmomatic commands.
+Your task is to implement the \texttt{bwa mem} command into a Snakemake rule.
 
 Here are some questions to get you thinking as you try to implement this rule:
 
@@ -860,12 +858,11 @@ If you hard-coded it, what would the rule look like?
 
 \begin{questions}
 
-Hard-coding the path is simple, but not ideal. What if you changed the name of the reference file or wanted to use the rule with a
-different project? You would have to modify the paths in multiple places, once in the \texttt{input} directive and once in the
-\texttt{shell} directive.
+Hard-coding the path is simple, but not ideal.
+What if you changed the name of the reference file or wanted to use the rule with a different project?
+You would have to modify the paths in multiple places, once in the \texttt{input} directive and once in the \texttt{shell} directive.
 
-Move the hard-coded path out of the \texttt{shell} directive into the \texttt{params} directive
-(see: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#non-file-parameters-for-rules}).
+Move the hard-coded path out of the \texttt{shell} directive into the \texttt{params} directive (see: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#non-file-parameters-for-rules}).
 
 \begin{answer}
 
@@ -888,32 +885,31 @@ Move the hard-coded path out of the \texttt{shell} directive into the \texttt{pa
 
 \begin{questions}
 
-Now you are making use of the \texttt{params} directive, this opens up the possibility of using some Python to do some string manipulations
-on the paths defined in the \texttt{input} directive. In particular, we can use a Python lambda function in the \texttt{params} directive
-(see: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#non-file-parameters-for-rules}).
+Now you are making use of the \texttt{params} directive, this opens up the possibility of using some Python to do some string manipulations on the paths defined in the \texttt{input} directive.
+In particular, we can use a Python lambda function in the \texttt{params} directive (see: \url{https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#non-file-parameters-for-rules}).
 
-How might you change a hard-coded path in the \texttt{params} directive to use a lambda function which manipulates the index file path(s) set
-in the \texttt{input} directive to define the prefix? Hint: take the path of one of the index files and remove the last few characters
-corresponding to the last file extension. You will probably need to do some reading of the Snakemake and/or Python documentation.
+How might you change a hard-coded path in the \texttt{params} directive to use a lambda function which manipulates the index file path(s) set in the \texttt{input} directive to define the prefix?
+Hint: take the path of one of the index files and remove the last few characters corresponding to the last file extension.
+You will probably need to do some reading of the Snakemake and/or Python documentation.
 
 \begin{answer}
 
 \begin{lstlisting}
-	input:
-		reference = expand("references/reference.fasta.gz.{ext}",
-			ext=["amb","ann","bwt","pac","sa"]
-		),
-	...
-	params:
-		prefix = lambda wildcards, input: input["reference"][0][:-4],
-	shell:
-		"""
-		bwa mem -t {threads} \
-		  {params.prefix} \
-		  {input.r1} {input.r2} \
-		| samtools view -b \
-		> {output}
-		"""
+  input:
+    reference = expand("references/reference.fasta.gz.{ext}",
+      ext=["amb","ann","bwt","pac","sa"]
+    ),
+  ...
+  params:
+    prefix = lambda wildcards, input: input["reference"][0][:-4],
+  shell:
+    """
+    bwa mem -t {threads} \
+      {params.prefix} \
+      {input.r1} {input.r2} \
+    | samtools view -b \
+    > {output}
+    """
 \end{lstlisting}
 
 \end{answer}
@@ -922,51 +918,50 @@ corresponding to the last file extension. You will probably need to do some read
 
 \begin{questions}
 
-Now add the BAM files corresponding to all the samples in the \texttt{SAMPLES} list, that you want the BWA-MEM rule to produce, to the
-\texttt{all} pseudo-rule.
+Now add the BAM files corresponding to all the samples in the \texttt{SAMPLES} list, that you want the BWA-MEM rule to produce, to the \texttt{all} pseudo-rule.
 
 \begin{answer}
 
 \begin{lstlisting}
-	rule all:
-		input:
-			expand("references/reference.fasta.gz.{ext}",
-				ext=['amb', 'ann', 'bwt', 'pac', 'sa']
-			),
-			expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
-				SAMPLE=SAMPLES,
-				read=['R1', 'R2']
-			),
-			expand("qc_reads/{SAMPLE}_{read}.fastq.gz",
-				SAMPLE=SAMPLES,
-				read=['R1', 'R2']
-			),
-			expand("mapped/{SAMPLE}.bam",
-				SAMPLE=SAMPLES,
-			),
-	input:
-		reference = expand("references/reference.fasta.gz.{ext}",
-			ext=["amb","ann","bwt","pac","sa"]
-	),
-	...
-	params:
-		prefix = lambda wildcards, input: input["reference"][0][:-4],
-	shell:
-		"""
-		bwa mem -t {threads} \
-		  {params.prefix} \
-		  {input.r1} {input.r2} \
-		| samtools view -b \
-		> {output}
-		"""
+rule all:
+  input:
+    expand("references/reference.fasta.gz.{ext}",
+      ext=['amb', 'ann', 'bwt', 'pac', 'sa']
+    ),
+    expand("raw_reads/{SAMPLE}_{read}_fastqc.html",
+      SAMPLE=SAMPLES,
+      read=['R1', 'R2']
+    ),
+    expand("qc_reads/{SAMPLE}_{read}.fastq.gz",
+      SAMPLE=SAMPLES,
+      read=['R1', 'R2']
+    ),
+    expand("mapped/{SAMPLE}.bam",
+      SAMPLE=SAMPLES,
+    ),
+  input:
+    reference = expand("references/reference.fasta.gz.{ext}",
+      ext=["amb","ann","bwt","pac","sa"]
+    ),
+  ...
+  params:
+    prefix = lambda wildcards, input: input["reference"][0][:-4],
+  shell:
+    """
+    bwa mem -t {threads} \
+      {params.prefix} \
+      {input.r1} {input.r2} \
+    | samtools view -b \
+    > {output}
+    """
 \end{lstlisting}
 
 \end{answer}
 
 \end{questions}
 
-Don't worry if you didn't complete the above implementation of the BWA-MEM command, we have a git repository branch with
-the rules we developed. Get it, execute the workflow and generate the DAG:
+Don't worry if you didn't complete the above implementation of the BWA-MEM command, we have a git repository branch with the rules we developed.
+Get it, execute the workflow and generate the DAG:
 
 \begin{lstlisting}
 # Checkout the branch with our implemetation of these rules
@@ -986,9 +981,8 @@ snakemake \
 
 \begin{warning}
 
-If you want to view the \texttt{dag3.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
-Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
-that shown in Figure ~\ref{fig:dag3}.
+If you want to view the \texttt{dag3.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp}, Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar.
+The DAG generated should look like that shown in Figure ~\ref{fig:dag3}.
 
 \end{warning}
 
@@ -1003,8 +997,8 @@ that shown in Figure ~\ref{fig:dag3}.
 \subsection{Adding New Samples}
 %------------------------
 
-Our \texttt{SAMPLES} list contains a lot of samples which are currently commented out. Lets uncomment them and have a look
-at some other features of Snakemake:
+Our \texttt{SAMPLES} list contains a lot of samples which are currently commented out.
+Lets uncomment them and have a look at some other features of Snakemake:
 
 \begin{lstlisting}
 # Manually uncomment the samples or use this sed command
@@ -1023,9 +1017,8 @@ snakemake \
 
 \begin{warning}
 
-If you want to view the \texttt{dag4.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
-Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The DAG generated should look like
-that shown in Figure ~\ref{fig:dag4}.
+If you want to view the \texttt{dag4.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp}, Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar.
+The DAG generated should look like that shown in Figure ~\ref{fig:dag4}.
 
 \end{warning}
 
@@ -1036,8 +1029,8 @@ that shown in Figure ~\ref{fig:dag4}.
 \label{fig:dag4}
 \end{figure}
 
-Instead, the ``rulegraph'' might provide a better view of the workflow. Unlike the DAG, that shows the individual jobs and their
-dependencies, the rulegraph shows only the rules and and their dependencies so provides a simplified view of the workflow:
+Instead, the ``rulegraph'' might provide a better view of the workflow.
+Unlike the DAG, that shows the individual jobs and their dependencies, the rulegraph shows only the rules and and their dependencies so provides a simplified view of the workflow:
 
 \begin{lstlisting}
 # Generate a rulegraph
@@ -1049,9 +1042,8 @@ snakemake \
 
 \begin{warning}
 
-If you want to view the \texttt{rulegraph.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp},
-Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar. The rulegraph generated should look like
-that shown in Figure ~\ref{fig:rulegraph}.
+If you want to view the \texttt{rulegraph.pdf} file yourself, you will need to copy the file to your local computer using \texttt{scp}, Filezilla (\url{https://filezilla-project.org}), WinSCP (\url{https://winscp.net}) or similar.
+The rulegraph generated should look like that shown in Figure ~\ref{fig:rulegraph}.
 
 \end{warning}
 
@@ -1079,8 +1071,8 @@ sq
 
 \begin{questions}
 
-How many \texttt{fastqc} and total number of jobs are run as part of the whole workflow? Hint: try using \texttt{--forceall} in combination
-with \texttt{--dryrun}.
+How many \texttt{fastqc} and total number of jobs are run as part of the whole workflow?
+Hint: try using \texttt{--forceall} in combination with \texttt{--dryrun}.
 
 \begin{answer}
 
@@ -1120,10 +1112,11 @@ snakemake \
 \subsection{Large Workflows}
 %------------------------
 
-A workflow I have developed is capable of mapping RNA-Seq, WGS, exome capture and Iso-Seq data to the wheat genome. In addition, downstream variant analysis and creation
-of various tracks for JBrowse (e.g. BigWig) are possible. Much of the workflow involves broking the tasks down so each of the chromosomes is proccessed independantly, and
-in parallel by the workflow. All up, there are more than 10,000 individual jobs representing 14 rules. DAG's of this size are best opened and layed out by Gephi using the
-\texttt{ForceAtlas 2} algorithm:
+A workflow I have developed is capable of mapping RNA-Seq, WGS, exome capture and Iso-Seq data to the wheat genome.
+In addition, downstream variant analysis and creation of various tracks for JBrowse (e.g. BigWig) are possible.
+Much of the workflow involves broking the tasks down so each of the chromosomes is proccessed independantly, and in parallel by the workflow.
+All up, there are more than 10,000 individual jobs representing 14 rules.
+DAG's of this size are best opened and layed out by Gephi using the \texttt{ForceAtlas 2} algorithm:
 
 \begin{figure}[H]
 \centering
