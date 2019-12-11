@@ -79,13 +79,14 @@ For the purpose of this training you need access to:
 \section{Snakemake is Like Making Sunday Dinner}
 %========================
 
-The way Snakemake approaches running workflows is a bit like the way you prepare for dinner/tea. First, you think about what you
-want for dinner/tea, say a Sunday roast. To create the Sunday roast, you need meat and vegetables, all of which need preparing
-(e.g. peeling and seasoning). If you haven't got an ingredient, you go out to the shop and buy it.
+The way Snakemake approaches running workflows is a bit like the way you prepare for dinner/tea.
+First, you think about what you want for dinner/tea, say a Sunday roast.
+To create the Sunday roast, you need meat and vegetables, all of which need preparing (e.g. peeling and seasoning).
+If you haven't got an ingredient, you go out to the shop and buy it.
 
-With Snakemake, you decide what output files you want to create, say some BAM files. To create the BAM files, you need FASTQ files
-and a reference genome, all of which need preparing (e.g. quality/adapter trimming and indexing). If you haven't got those files,
-you need to create them.
+With Snakemake, you decide what output files you want to create, say some BAM files.
+To create the BAM files, you need FASTQ files and a reference genome, all of which need preparing (e.g. quality/adapter trimming and indexing).
+If you haven't got those files, you need to create them.
 
 % TODO: Create DAG of Sunday Dinner
 
@@ -94,21 +95,18 @@ you need to create them.
 %========================
 
 For the purpose of the workshop we will be working on the head node of an HPC cluster running slurm (\url{https://slurm.schedmd.com/documentation.html}).
-This is the most likely infrastructure that fellow bioinformaticians already find themselves using
-on a regular basis. We also assume that the cluster provides the \texttt{module} command for you to
-load software and the modules \texttt{Anaconda3} and \texttt{Singularity} are available to use.
+This is the most likely infrastructure that fellow bioinformaticians already find themselves using on a regular basis.
+We also assume that the cluster provides the \texttt{module} command for you to load software and the modules \texttt{Anaconda3} and \texttt{Singularity} are available to use.
 
-The execution of the Snakemake workflow will actually take place on the cluster head node with jobs
-being submitted to Slurm for queing and processing. From the head node, Snakemake will monitor the
-submitted jobs for their completion status and submit new jobs as dependent jobs complete sucessfully.
+The execution of the Snakemake workflow will actually take place on the cluster head node with jobs being submitted to Slurm for queing and processing.
+From the head node, Snakemake will monitor the submitted jobs for their completion status and submit new jobs as dependent jobs complete sucessfully.
 
 %------------------------
 \subsection{Installing Snakemake}
 %------------------------
 
-The recommended installation route for Snakemake is through a conda environemnt
-(\url{https://snakemake.readthedocs.io/en/stable/getting_started/installation.html}). As such, you need
-Anaconda3, usually avaiable to you on your cluster via the module system.
+The recommended installation route for Snakemake is through a conda environemnt (\url{https://snakemake.readthedocs.io/en/stable/getting_started/installation.html}).
+As such, you need Anaconda3, usually available to you on your cluster via the module system.
 
 \begin{steps}
 \begin{lstlisting}
