@@ -114,7 +114,7 @@ Anaconda3, usually avaiable to you on your cluster via the module system.
 \begin{lstlisting}
 # We use a specific version for reproducibility reasons
 # Find the latest version: https://anaconda.org/search?q=snakemake
-SNAKEMAKE_VERSION="5.5.4"
+SNAKEMAKE_VERSION="5.8.1"
 
 # Load miniconda
 module load \
@@ -144,16 +144,18 @@ conda config --add channels conda-forge
 
 \begin{warning}
 
-Do NOT run the following command! This is provided for future reference so you know how to Install Snakemake on another system. Rather than
-creating the conda environment from scratch, we'll simply copy a pre-existing directory so we save time, and possible headaches.
+\textbf{Do NOT run the following command!}
+This is provided for future reference so you know how to Install Snakemake on another system.
+We have already run this for you and doing so again will cause delays.
 
 \begin{lstlisting}
-# Install snakemake using conda
-# This might take 5-10mins
-conda create \
-  --name snakemake \
-  --yes \
-  snakemake=${SNAKEMAKE_VERSION:-5.5.4}
+## Install snakemake using conda
+## This might take 5-10mins
+#SNAKEMAKE_VERSION="5.8.1"
+#
+#conda create \
+#  --name snakemake \
+#  snakemake=${SNAKEMAKE_VERSION}
 \end{lstlisting}
 
 Snakemake installation is now complete.
@@ -162,17 +164,7 @@ Snakemake installation is now complete.
 
 \begin{steps}
 
-For the purposes of this workshop, simply copy the following \texttt{.conda} directory and you
-will have Snakemake setup and ready to go:
-
-\begin{lstlisting}
-mkdir --parents /shared/${USER}
-cp --recursive \
-  /shared/ubuntu/.conda \
-  /shared/${USER}/
-\end{lstlisting}
-
-All that is left to do is to activate the environment which will make \texttt{snakemake} available on the command line:
+All you need to do is to activate the environment which will make \texttt{snakemake} available to you on the command line:
 
 \begin{lstlisting}
 # Activate the conda environment
@@ -192,8 +184,6 @@ snakemake --version
 \end{lstlisting}
 
 \end{steps}
-
-If you experience problems with the installation, head to the \hyperref[sec:snake_trouble]{Troubleshooting} section for help.
 
 \begin{bonus}
 
